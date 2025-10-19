@@ -41,3 +41,5 @@ curl -X POST http://localhost:3000/api/rfid \
 ## Despliegue
 
 Configura la variable `NEXT_PUBLIC_APP_ORIGIN` para definir el origen permitido de Socket.IO en producción.
+
+Si tus tablas viven en un esquema distinto a `public` (por ejemplo `tenant_base`), define la variable `PG_SCHEMA` para que la aplicación ajuste automáticamente el `search_path` de PostgreSQL.
