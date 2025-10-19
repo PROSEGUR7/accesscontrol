@@ -112,7 +112,11 @@ export function useRfidStream(options?: UseRfidStreamOptions) {
       }
     }
 
-    void connect()
+    if (socket.connected) {
+      handleConnect()
+    } else {
+      void connect()
+    }
 
     return () => {
       cancelled = true
