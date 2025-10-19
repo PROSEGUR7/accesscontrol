@@ -158,3 +158,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to process RFID payload", details: (error as Error).message }, { status: 500 })
   }
 }
+
+export async function GET(req: NextRequest) {
+  const limitParam = Number(req.nextUrl.searchParams.get("limit") ?? "100")
+  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(Math.trunc(limitParam), 1), 500) : 100
+
+  try {
+    const rows = await query<MovementRow>(
+      `SELECT id, ts, tipo, epc, persona_id, objeto_id, puerta_id, lector_id, antena_id, rssi, direccion, motivo, extra, created_at
+       FROM movimientos
+       ORDER BY ts DESC
+       LIMIT $1`,
+      [limit],
+    )
+
+    const movements = rows.map((row) => formatMovement(row))
+
+    return NextResponse.json({ movements })
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch RFID events", details: (error as Error).message }, { status: 500 })
+  }
+}

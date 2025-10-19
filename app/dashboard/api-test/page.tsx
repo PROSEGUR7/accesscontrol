@@ -53,13 +53,65 @@ function describeEvent(event: RfidEvent) {
 }
 
 export default function ApiTestPage() {
-  const { events, connected, error, clear, lastEvent } = useRfidStream({ bufferSize: 100 })
+  const { events: liveEvents, connected, error, clear } = useRfidStream({ bufferSize: 100 })
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [initialEvents, setInitialEvents] = useState<RfidEvent[]>([])
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [initialError, setInitialError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const fetchInitial = async () => {
+      try {
+        setInitialLoading(true)
+        setInitialError(null)
+        const response = await fetch("/api/rfid?limit=100")
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}`)
+        }
+        const body = (await response.json()) as { movements?: RfidEvent[] }
+        if (!cancelled) {
+          setInitialEvents(Array.isArray(body.movements) ? body.movements : [])
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setInitialError((err as Error).message)
+        }
+      } finally {
+        if (!cancelled) {
+          setInitialLoading(false)
+        }
+      }
+    }
+
+    void fetchInitial()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const events = useMemo(() => {
+    const merged = [...liveEvents, ...initialEvents]
+    const unique: RfidEvent[] = []
+    const seen = new Set<number>()
+
+    for (const event of merged) {
+      if (event && typeof event.id === "number" && !seen.has(event.id)) {
+        unique.push(event)
+        seen.add(event.id)
+      }
+    }
+
+    return unique
+  }, [liveEvents, initialEvents])
 
   useEffect(() => {
     setSelectedIndex(0)
   }, [events.length])
 
+  const lastEvent = events[0] ?? null
   const selectedEvent = events[selectedIndex] ?? null
   const formattedEvents = useMemo(
     () =>
@@ -70,6 +122,12 @@ export default function ApiTestPage() {
       })),
     [events],
   )
+
+  const handleClear = () => {
+    clear()
+    setInitialEvents([])
+    setSelectedIndex(0)
+  }
 
   return (
     <div className="space-y-6">
@@ -85,6 +143,7 @@ export default function ApiTestPage() {
           {connected ? "Socket conectado" : "Socket desconectado"}
         </Badge>
         {error ? <Badge variant="destructive">{error}</Badge> : null}
+        {initialError ? <Badge variant="destructive">Historial: {initialError}</Badge> : null}
         <Badge variant="secondary" className="bg-muted text-muted-foreground">
           {events.length} evento{events.length === 1 ? "" : "s"} en buffer
         </Badge>
@@ -93,7 +152,7 @@ export default function ApiTestPage() {
             Último evento: {formatTimestamp(lastEvent.timestamp)}
           </span>
         ) : null}
-        <Button variant="outline" size="sm" onClick={clear}>
+        <Button variant="outline" size="sm" onClick={handleClear}>
           Limpiar buffer
         </Button>
       </div>
@@ -149,7 +208,9 @@ export default function ApiTestPage() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
-                      Aún no hay eventos en el buffer. Envía un POST a `/api/rfid` para comenzar a recibir datos.
+                      {initialLoading
+                        ? "Cargando historial de eventos guardados..."
+                        : "Aún no hay eventos en el buffer. Envía un POST a `/api/rfid` para comenzar a recibir datos."}
                     </TableCell>
                   </TableRow>
                 )}
