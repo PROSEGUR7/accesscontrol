@@ -1,6 +1,6 @@
 "use client"
 
-import { Building2, DoorClosed, FileBarChart, KeySquare, LayoutDashboard, MapPin, Users } from "lucide-react"
+import { Activity, Building2, DoorClosed, FileBarChart, KeySquare, LayoutDashboard, MapPin, Users } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -55,6 +55,11 @@ const data = {
       title: "Reportes",
       url: "/dashboard/reports",
       icon: FileBarChart,
+    },
+    {
+      title: "API Test",
+      url: "/dashboard/api-test",
+      icon: Activity,
     },
   ],
 }
