@@ -26,10 +26,30 @@ type UseRfidStreamOptions = {
 declare global {
   interface Window {
     __rfidSocket?: Socket
+    __rfidSocketInit?: Promise<void>
   }
 }
 
 const SOCKET_PATH = "/api/socketio"
+
+async function ensureSocketServer() {
+  if (typeof window === "undefined") return
+
+  if (!window.__rfidSocketInit) {
+    window.__rfidSocketInit = fetch(SOCKET_PATH)
+      .then(() => undefined)
+      .catch((error) => {
+        console.error("No se pudo inicializar socket.io", error)
+        throw error
+      })
+  }
+
+  try {
+    await window.__rfidSocketInit
+  } catch {
+    // silencioso: el estado de error se maneja en el hook
+  }
+}
 
 function getClientSocket() {
   if (typeof window === "undefined") {
@@ -55,6 +75,7 @@ export function useRfidStream(options?: UseRfidStreamOptions) {
 
   useEffect(() => {
     const socket = getClientSocket()
+    let cancelled = false
 
     const handleConnect = () => {
       setConnected(true)
@@ -78,11 +99,23 @@ export function useRfidStream(options?: UseRfidStreamOptions) {
     socket.on("connect_error", handleError)
     socket.on("rfid-event", handleEvent)
 
-    if (!socket.connected) {
-      socket.connect()
+    const connect = async () => {
+      try {
+        await ensureSocketServer()
+        if (!cancelled && !socket.connected) {
+          socket.connect()
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError((err as Error).message)
+        }
+      }
     }
 
+    void connect()
+
     return () => {
+      cancelled = true
       socket.off("connect", handleConnect)
       socket.off("disconnect", handleDisconnect)
       socket.off("connect_error", handleError)
