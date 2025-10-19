@@ -9,15 +9,16 @@ type MovementRow = {
   ts: Date
   tipo: string | null
   epc: string | null
-  persona_i: number | null
-  objeto_i: number | null
-  puerta_i: number | null
-  lector_i: number | null
-  antena_i: number | null
+  persona_id: number | null
+  objeto_id: number | null
+  puerta_id: number | null
+  lector_id: number | null
+  antena_id: number | null
   rssi: number | null
   direccion: string | null
   motivo: string | null
   extra: unknown
+  created_at: Date
 }
 
 const payloadSchema = z.object({
@@ -71,11 +72,11 @@ function formatMovement(row: MovementRow) {
     timestamp: row.ts instanceof Date ? row.ts.toISOString() : new Date(row.ts).toISOString(),
     tipo: row.tipo,
     epc: row.epc,
-    personaId: row.persona_i === null ? null : Number(row.persona_i),
-    objetoId: row.objeto_i === null ? null : Number(row.objeto_i),
-    puertaId: row.puerta_i === null ? null : Number(row.puerta_i),
-    lectorId: row.lector_i === null ? null : Number(row.lector_i),
-    antenaId: row.antena_i === null ? null : Number(row.antena_i),
+    personaId: row.persona_id === null ? null : Number(row.persona_id),
+    objetoId: row.objeto_id === null ? null : Number(row.objeto_id),
+    puertaId: row.puerta_id === null ? null : Number(row.puerta_id),
+    lectorId: row.lector_id === null ? null : Number(row.lector_id),
+    antenaId: row.antena_id === null ? null : Number(row.antena_id),
     rssi: row.rssi === null ? null : Number(row.rssi),
     direccion: row.direccion,
     motivo: row.motivo,
@@ -129,17 +130,17 @@ export async function POST(req: NextRequest) {
         ts,
         tipo,
         epc,
-        persona_i,
-        objeto_i,
-        puerta_i,
-        lector_i,
-        antena_i,
+        persona_id,
+        objeto_id,
+        puerta_id,
+        lector_id,
+        antena_id,
         rssi,
         direccion,
         motivo,
         extra
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING id, ts, tipo, epc, persona_i, objeto_i, puerta_i, lector_i, antena_i, rssi, direccion, motivo, extra`,
+      RETURNING id, ts, tipo, epc, persona_id, objeto_id, puerta_id, lector_id, antena_id, rssi, direccion, motivo, extra, created_at`,
   [ts, tipo ?? null, epc, persona, objeto, puerta, lector, antena, signal, direccion ?? null, motivo ?? null, extraPayload],
     )
 
