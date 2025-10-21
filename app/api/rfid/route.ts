@@ -37,6 +37,12 @@ const payloadSchema = z.object({
   extra: z.union([z.record(z.unknown()), z.array(z.unknown()), z.string()]).optional(),
 })
 
+const LOG_PREFIX = "[RFID-API]"
+function logDebug(...args: unknown[]) {
+  if (process.env.RFID_API_DEBUG === "false") return
+  console.log(LOG_PREFIX, ...args)
+}
+
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "",
@@ -279,17 +285,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to read request body", details: (error as Error).message }, { status: 400 })
   }
 
-  const coerced = coercePayload(rawBody, req.headers.get("content-type"))
+  const contentType = req.headers.get("content-type") ?? ""
+  logDebug("Incoming request", { contentType, rawPreview: rawBody.slice(0, 1000) })
+
+  const coerced = coercePayload(rawBody, contentType)
+  logDebug("Coerced payload", coerced)
   const normalizedPayload = normalizePayload(coerced)
+  logDebug("Normalized payload", normalizedPayload)
 
   const parsed = payloadSchema.safeParse(normalizedPayload)
 
   if (!parsed.success) {
+    logDebug("Validation failed", parsed.error.flatten())
     return NextResponse.json({
+      ok: false,
       error: "Invalid payload",
       issues: parsed.error.flatten(),
-      receivedBody: rawBody.slice(0, 1000),
-    }, { status: 400 })
+    }, { status: 200 })
   }
 
   try {
@@ -343,8 +355,11 @@ export async function POST(req: NextRequest) {
     const io = getSocketServer()
     io?.emit("rfid-event", formatted)
 
+    logDebug("Movement stored", formatted)
+
     return NextResponse.json({ movement: formatted })
   } catch (error) {
+    logDebug("Processing error", (error as Error).message)
     return NextResponse.json({ error: "Failed to process RFID payload", details: (error as Error).message }, { status: 500 })
   }
 }
