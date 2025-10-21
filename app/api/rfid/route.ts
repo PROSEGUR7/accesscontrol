@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
+import { XMLParser } from "fast-xml-parser"
 import { z } from "zod"
 
 import { query } from "@/lib/db"
@@ -35,6 +36,192 @@ const payloadSchema = z.object({
   motivo: z.string().trim().optional(),
   extra: z.union([z.record(z.unknown()), z.array(z.unknown()), z.string()]).optional(),
 })
+
+const xmlParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: "",
+  trimValues: true,
+  parseAttributeValue: true,
+})
+
+type SimpleObject = Record<string, unknown>
+
+const FIELD_ALIASES: Record<string, string[]> = {
+  epc: ["epc", "tagid", "tagvalue", "id", "tagidhex", "tagiddec"],
+  timestamp: ["timestamp", "ts", "time", "eventtime", "datetime", "created", "occuredat"],
+  tipo: ["tipo", "type", "eventtype", "movementtype"],
+  personaId: ["personaid", "persona_id", "personid", "person", "workerid"],
+  objetoId: ["objetoid", "objectid", "assetid", "itemid"],
+  puertaId: ["puertaid", "doorid", "gateid"],
+  lectorId: ["lectorid", "readerid", "reader", "deviceid"],
+  antenaId: ["antenaid", "antennaid", "antenna", "portid"],
+  rssi: ["rssi", "signal", "signalstrength", "power"],
+  direccion: ["direccion", "direction", "movement", "antennaevent"],
+  motivo: ["motivo", "reason", "cause"],
+  extra: ["extra", "metadata", "details", "payload"],
+}
+
+function normalizeKey(key: string) {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, "")
+}
+
+function isPlainObject(value: unknown): value is SimpleObject {
+  if (value === null || typeof value !== "object") return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+function tryParseJson(raw: string) {
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function tryParseFormEncoded(raw: string) {
+  const candidate = raw.replace(/\r?\n/g, "&")
+  if (!/[^=&]+=/.test(candidate)) return null
+  const params = new URLSearchParams(candidate)
+  const result: Record<string, unknown> = {}
+  for (const [key, value] of params.entries()) {
+    if (key === "") continue
+    if (result[key] === undefined) {
+      result[key] = value
+    } else if (Array.isArray(result[key])) {
+      (result[key] as unknown[]).push(value)
+    } else {
+      result[key] = [result[key], value]
+    }
+  }
+  return Object.keys(result).length > 0 ? result : null
+}
+
+function tryParseXml(raw: string) {
+  try {
+    return xmlParser.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function coercePayload(raw: string, contentType: string | null) {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  const lowered = (contentType ?? "").toLowerCase()
+
+  const attemptJson = () => tryParseJson(trimmed)
+  const attemptForm = () => tryParseFormEncoded(trimmed)
+  const attemptXml = () => tryParseXml(trimmed)
+
+  if (lowered.includes("json")) {
+    const json = attemptJson()
+    if (json !== null) return json
+  }
+
+  if (lowered.includes("xml")) {
+    const xml = attemptXml()
+    if (xml !== null) return xml
+  }
+
+  if (lowered.includes("x-www-form-urlencoded")) {
+    const form = attemptForm()
+    if (form !== null) return form
+  }
+
+  if (lowered.includes("text/plain")) {
+    const json = attemptJson()
+    if (json !== null) return json
+    const form = attemptForm()
+    if (form !== null) return form
+  }
+
+  const json = attemptJson()
+  if (json !== null) return json
+
+  const xml = attemptXml()
+  if (xml !== null) return xml
+
+  const form = attemptForm()
+  if (form !== null) return form
+
+  return trimmed
+}
+
+function findValue(source: unknown, aliases: string[]): unknown {
+  if (source === null || source === undefined) return undefined
+  const normalizedAliases = aliases.map((alias) => normalizeKey(alias))
+  const queue: unknown[] = Array.isArray(source) ? [...source] : [source]
+  const visited = new Set<unknown>()
+
+  while (queue.length > 0) {
+    const current = queue.shift()
+    if (current === null || current === undefined) continue
+    if (visited.has(current)) continue
+
+    if (Array.isArray(current)) {
+      visited.add(current)
+      for (const item of current) {
+        if (item !== null && typeof item === "object") {
+          queue.push(item)
+        }
+      }
+      continue
+    }
+
+    if (!isPlainObject(current)) continue
+    visited.add(current)
+    for (const [key, value] of Object.entries(current)) {
+      const normalizedKey = normalizeKey(key)
+      if (normalizedAliases.includes(normalizedKey)) {
+        if (Array.isArray(value)) {
+          const firstUseful = value.find((item) => item !== null && item !== undefined)
+          if (firstUseful !== undefined) {
+            return firstUseful
+          }
+        } else {
+          return value
+        }
+      }
+
+      if (value !== null && typeof value === "object") {
+        queue.push(value)
+      }
+    }
+  }
+
+  return undefined
+}
+
+function normalizePayload(raw: unknown) {
+  const root = Array.isArray(raw)
+    ? raw.find((item) => isPlainObject(item)) ?? raw[0]
+    : raw
+
+  if (!isPlainObject(root)) {
+    if (typeof root === "string" && root.trim()) {
+      return { extra: root.trim() }
+    }
+    return {}
+  }
+
+  const normalized: Record<string, unknown> = {}
+
+  for (const [targetKey, aliases] of Object.entries(FIELD_ALIASES)) {
+    const value = findValue(root, aliases)
+    if (value !== undefined) {
+      normalized[targetKey] = targetKey === "epc" && typeof value !== "string"
+        ? String(value)
+        : value
+    }
+  }
+
+  if (normalized.extra === undefined) {
+    normalized.extra = root
+  }
+
+  return normalized
+}
 
 function toOptionalNumber(value: string | number | undefined) {
   if (value === undefined) return null
@@ -85,20 +272,23 @@ function formatMovement(row: MovementRow) {
 }
 
 export async function POST(req: NextRequest) {
-  let payload: unknown
-
+  let rawBody = ""
   try {
-    payload = await req.json()
+    rawBody = await req.text()
   } catch (error) {
-    return NextResponse.json({ error: "Invalid JSON payload", details: (error as Error).message }, { status: 400 })
+    return NextResponse.json({ error: "Failed to read request body", details: (error as Error).message }, { status: 400 })
   }
 
-  const parsed = payloadSchema.safeParse(payload)
+  const coerced = coercePayload(rawBody, req.headers.get("content-type"))
+  const normalizedPayload = normalizePayload(coerced)
+
+  const parsed = payloadSchema.safeParse(normalizedPayload)
 
   if (!parsed.success) {
     return NextResponse.json({
       error: "Invalid payload",
       issues: parsed.error.flatten(),
+      receivedBody: rawBody.slice(0, 1000),
     }, { status: 400 })
   }
 
