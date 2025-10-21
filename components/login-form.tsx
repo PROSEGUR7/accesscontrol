@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 
-interface LoginFormProps extends React.ComponentProps<"div"> {}
+type LoginFormProps = React.ComponentProps<"div">
 
 export function LoginForm({ className, ...props }: LoginFormProps) {
   const router = useRouter()

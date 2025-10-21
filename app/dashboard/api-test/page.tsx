@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -71,6 +71,9 @@ export default function ApiTestPage() {
   const [initialError, setInitialError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [purging, setPurging] = useState(false)
+  const [statsVersion, setStatsVersion] = useState(0)
+  const epcStatsRef = useRef(new Map<string, { count: number; lastSeen: string | null }>())
+  const processedIdsRef = useRef(new Set<number>())
 
   useEffect(() => {
     let cancelled = false
@@ -121,33 +124,78 @@ export default function ApiTestPage() {
   }, [liveEvents, initialEvents])
 
   useEffect(() => {
+    const stats = epcStatsRef.current
+    const processed = processedIdsRef.current
+    let changed = false
+
+    for (const event of events) {
+      if (!event) continue
+
+      const id = typeof event.id === "number" ? event.id : null
+      const key = event.epc ?? "__missing__"
+      const incomingCount = event.readCount ?? null
+      const incomingLast = event.lastSeen ?? event.timestamp ?? null
+
+      const existing = stats.get(key) ?? { count: 0, lastSeen: null as string | null }
+
+      if (id !== null && processed.has(id)) {
+        if (incomingCount !== null && incomingCount > existing.count) {
+          existing.count = incomingCount
+          changed = true
+        }
+
+        if (incomingLast) {
+          if (!existing.lastSeen || new Date(incomingLast).getTime() > new Date(existing.lastSeen).getTime()) {
+            existing.lastSeen = incomingLast
+            changed = true
+          }
+        }
+
+        stats.set(key, existing)
+        continue
+      }
+
+      if (id !== null) {
+        processed.add(id)
+      }
+
+      if (incomingCount !== null) {
+        if (incomingCount > existing.count) {
+          existing.count = incomingCount
+          changed = true
+        }
+      } else {
+        existing.count += 1
+        changed = true
+      }
+
+      if (incomingLast) {
+        if (!existing.lastSeen || new Date(incomingLast).getTime() > new Date(existing.lastSeen).getTime()) {
+          existing.lastSeen = incomingLast
+          changed = true
+        }
+      }
+
+      stats.set(key, existing)
+    }
+
+    if (changed) {
+      setStatsVersion((version) => version + 1)
+    }
+  }, [events])
+
+  useEffect(() => {
     setSelectedIndex(0)
   }, [events.length])
 
   const formattedEvents = useMemo(() => {
-    const fallbackStats = new Map<string, { count: number; lastSeen: string | null }>()
-
-    for (const event of events) {
-      const key = event.epc ?? "__missing__"
-      const ts = event.timestamp ?? null
-      const entry = fallbackStats.get(key)
-      if (!entry) {
-        fallbackStats.set(key, { count: 1, lastSeen: ts })
-      } else {
-        entry.count += 1
-        if (ts) {
-          if (!entry.lastSeen || new Date(ts).getTime() > new Date(entry.lastSeen).getTime()) {
-            entry.lastSeen = ts
-          }
-        }
-      }
-    }
+    const stats = epcStatsRef.current
 
     return events.map((event) => {
       const key = event.epc ?? "__missing__"
-      const stat = fallbackStats.get(key)
-      const readCount = event.readCount ?? stat?.count ?? 1
-      const lastSeen = event.lastSeen ?? stat?.lastSeen ?? event.timestamp ?? null
+      const stat = stats.get(key)
+      const readCount = stat?.count ?? event.readCount ?? 1
+      const lastSeen = stat?.lastSeen ?? event.lastSeen ?? event.timestamp ?? null
 
       return {
         ...event,
@@ -157,7 +205,7 @@ export default function ApiTestPage() {
         lastSeen,
       }
     }) as EnrichedEvent[]
-  }, [events])
+  }, [events, statsVersion])
 
   const lastEvent = events[0] ?? null
   const selectedEvent = formattedEvents[selectedIndex] ?? null
@@ -177,6 +225,9 @@ export default function ApiTestPage() {
       clear()
       setInitialEvents([])
       setSelectedIndex(0)
+      epcStatsRef.current.clear()
+      processedIdsRef.current.clear()
+      setStatsVersion((version) => version + 1)
     } catch (err) {
       setActionError((err as Error).message)
     } finally {
