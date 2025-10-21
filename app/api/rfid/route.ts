@@ -20,6 +20,8 @@ type MovementRow = {
   motivo: string | null
   extra: unknown
   created_at: Date
+  read_count: number | null
+  last_seen: Date | null
 }
 
 const payloadSchema = z.object({
@@ -399,21 +401,30 @@ type InsertMovementParams = {
 async function insertMovement(params: InsertMovementParams, attempt = 0): Promise<MovementRow> {
   try {
     const rows = await query<MovementRow>(
-      `INSERT INTO movimientos (
-        ts,
-        tipo,
-        epc,
-        persona_id,
-        objeto_id,
-        puerta_id,
-        lector_id,
-        antena_id,
-        rssi,
-        direccion,
-        motivo,
-        extra
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING id, ts, tipo, epc, persona_id, objeto_id, puerta_id, lector_id, antena_id, rssi, direccion, motivo, extra, created_at`,
+      `WITH inserted AS (
+        INSERT INTO movimientos (
+          ts,
+          tipo,
+          epc,
+          persona_id,
+          objeto_id,
+          puerta_id,
+          lector_id,
+          antena_id,
+          rssi,
+          direccion,
+          motivo,
+          extra
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING id, ts, tipo, epc, persona_id, objeto_id, puerta_id, lector_id, antena_id, rssi, direccion, motivo, extra, created_at
+      )
+      SELECT inserted.*, stats.read_count::int, stats.last_seen
+      FROM inserted
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS read_count, MAX(ts) AS last_seen
+        FROM movimientos
+        WHERE epc = inserted.epc
+      ) stats ON true`,
       [
         params.ts,
         params.tipo,
@@ -492,6 +503,12 @@ function formatMovement(row: MovementRow) {
     direccion: row.direccion,
     motivo: row.motivo,
     extra: row.extra,
+    readCount: row.read_count === null ? null : Number(row.read_count),
+    lastSeen: row.last_seen instanceof Date
+      ? row.last_seen.toISOString()
+      : row.last_seen
+        ? new Date(row.last_seen).toISOString()
+        : null,
   }
 }
 
@@ -605,9 +622,29 @@ export async function GET(req: NextRequest) {
 
   try {
     const rows = await query<MovementRow>(
-      `SELECT id, ts, tipo, epc, persona_id, objeto_id, puerta_id, lector_id, antena_id, rssi, direccion, motivo, extra, created_at
-       FROM movimientos
-       ORDER BY ts DESC
+      `SELECT m.id,
+              m.ts,
+              m.tipo,
+              m.epc,
+              m.persona_id,
+              m.objeto_id,
+              m.puerta_id,
+              m.lector_id,
+              m.antena_id,
+              m.rssi,
+              m.direccion,
+              m.motivo,
+              m.extra,
+              m.created_at,
+              stats.read_count::int,
+              stats.last_seen
+       FROM movimientos m
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*) AS read_count, MAX(ts) AS last_seen
+         FROM movimientos
+         WHERE epc = m.epc
+       ) stats ON true
+       ORDER BY m.ts DESC
        LIMIT $1`,
       [limit],
     )

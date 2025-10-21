@@ -125,14 +125,14 @@ export default function ApiTestPage() {
   }, [events.length])
 
   const formattedEvents = useMemo(() => {
-    const stats = new Map<string, { count: number; lastSeen: string | null }>()
+    const fallbackStats = new Map<string, { count: number; lastSeen: string | null }>()
 
     for (const event of events) {
       const key = event.epc ?? "__missing__"
       const ts = event.timestamp ?? null
-      const entry = stats.get(key)
+      const entry = fallbackStats.get(key)
       if (!entry) {
-        stats.set(key, { count: 1, lastSeen: ts })
+        fallbackStats.set(key, { count: 1, lastSeen: ts })
       } else {
         entry.count += 1
         if (ts) {
@@ -145,13 +145,16 @@ export default function ApiTestPage() {
 
     return events.map((event) => {
       const key = event.epc ?? "__missing__"
-      const stat = stats.get(key)
+      const stat = fallbackStats.get(key)
+      const readCount = event.readCount ?? stat?.count ?? 1
+      const lastSeen = event.lastSeen ?? stat?.lastSeen ?? event.timestamp ?? null
+
       return {
         ...event,
         severity: getSeverityVariant(event),
         formattedTimestamp: formatTimestamp(event.timestamp),
-        readCount: stat?.count ?? 1,
-        lastSeen: stat?.lastSeen ?? event.timestamp ?? null,
+        readCount,
+        lastSeen,
       }
     }) as EnrichedEvent[]
   }, [events])

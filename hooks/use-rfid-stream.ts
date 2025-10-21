@@ -17,6 +17,8 @@ export type RfidEvent = {
   direccion: string | null
   motivo: string | null
   extra: unknown
+  readCount?: number | null
+  lastSeen?: string | null
 }
 
 type UseRfidStreamOptions = {
