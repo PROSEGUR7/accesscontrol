@@ -35,7 +35,7 @@ export default function handler(_req: NextApiRequest, res: NextApiResponseWithSo
     console.log("[socket.io] Initializing Socket.IO server")
     const io = new SocketIOServer(socket.server, {
       path: "/api/socketio",
-      transports: ["polling"],
+      transports: ["websocket", "polling"],
       cors: {
         origin: process.env.NEXT_PUBLIC_APP_ORIGIN ?? true,
       },

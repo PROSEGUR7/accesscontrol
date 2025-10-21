@@ -58,6 +58,8 @@ export default function ApiTestPage() {
   const [initialEvents, setInitialEvents] = useState<RfidEvent[]>([])
   const [initialLoading, setInitialLoading] = useState(true)
   const [initialError, setInitialError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [purging, setPurging] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -123,10 +125,26 @@ export default function ApiTestPage() {
     [events],
   )
 
-  const handleClear = () => {
-    clear()
-    setInitialEvents([])
-    setSelectedIndex(0)
+  const handlePurge = async () => {
+    setActionError(null)
+    setPurging(true)
+    try {
+      const response = await fetch("/api/rfid", { method: "DELETE" })
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}`)
+      }
+      const body = (await response.json()) as { ok?: boolean; deleted?: number }
+      if (body.ok === false) {
+        throw new Error("La API no pudo eliminar los registros")
+      }
+      clear()
+      setInitialEvents([])
+      setSelectedIndex(0)
+    } catch (err) {
+      setActionError((err as Error).message)
+    } finally {
+      setPurging(false)
+    }
   }
 
   return (
@@ -144,6 +162,7 @@ export default function ApiTestPage() {
         </Badge>
         {error ? <Badge variant="destructive">{error}</Badge> : null}
         {initialError ? <Badge variant="destructive">Historial: {initialError}</Badge> : null}
+        {actionError ? <Badge variant="destructive">Acción: {actionError}</Badge> : null}
         <Badge variant="secondary" className="bg-muted text-muted-foreground">
           {events.length} evento{events.length === 1 ? "" : "s"} en buffer
         </Badge>
@@ -152,8 +171,15 @@ export default function ApiTestPage() {
             Último evento: {formatTimestamp(lastEvent.timestamp)}
           </span>
         ) : null}
-        <Button variant="outline" size="sm" onClick={handleClear}>
-          Limpiar buffer
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => {
+            void handlePurge()
+          }}
+          disabled={purging}
+        >
+          {purging ? "Eliminando..." : "Eliminar registros"}
         </Button>
       </div>
 

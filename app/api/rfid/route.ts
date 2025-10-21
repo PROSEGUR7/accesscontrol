@@ -425,3 +425,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch RFID events", details: (error as Error).message }, { status: 500 })
   }
 }
+
+export async function DELETE(_req: NextRequest) {
+  try {
+  const [result] = await query<{ count: string }>(
+      `WITH deleted AS (
+        DELETE FROM movimientos
+        RETURNING id
+      )
+      SELECT COUNT(*)::int AS count FROM deleted`,
+    )
+
+  const deleted = Number(result?.count ?? 0)
+
+    const io = getSocketServer()
+    io?.emit("rfid-clear")
+
+    return NextResponse.json({ ok: true, deleted })
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: "Failed to delete RFID events", details: (error as Error).message },
+      { status: 500 },
+    )
+  }
+}

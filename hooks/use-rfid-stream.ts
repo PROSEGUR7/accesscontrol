@@ -59,9 +59,12 @@ function getClientSocket() {
   if (!window.__rfidSocket) {
     window.__rfidSocket = io({
       path: SOCKET_PATH,
-      transports: ["polling"],
-      upgrade: false,
+      transports: ["websocket", "polling"],
       autoConnect: false,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
     })
   }
 
@@ -77,41 +80,84 @@ export function useRfidStream(options?: UseRfidStreamOptions) {
   useEffect(() => {
     const socket = getClientSocket()
     let cancelled = false
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let retryDelay = 1000
+    let isConnecting = socket.connected
 
     const handleConnect = () => {
+      retryDelay = 1000
+      isConnecting = false
       setConnected(true)
       setError(null)
     }
 
-    const handleDisconnect = () => {
+    const scheduleReconnect = () => {
+      if (cancelled) return
+      const delay = retryDelay
+      if (reconnectTimer !== null) {
+        clearTimeout(reconnectTimer)
+      }
+      reconnectTimer = setTimeout(() => {
+        if (cancelled) return
+        void connect()
+      }, delay)
+      retryDelay = Math.min(retryDelay * 2, 10000)
+    }
+
+  const handleDisconnect = (reason: string) => {
+      isConnecting = false
       setConnected(false)
+      if (reason !== "io client disconnect") {
+        scheduleReconnect()
+      }
     }
 
     const handleError = (err: Error) => {
+      isConnecting = false
       setError(err.message)
+      scheduleReconnect()
     }
 
     const handleEvent = (event: RfidEvent) => {
       setEvents((current) => [event, ...current].slice(0, bufferSize))
     }
 
-    socket.on("connect", handleConnect)
-    socket.on("disconnect", handleDisconnect)
-    socket.on("connect_error", handleError)
-    socket.on("rfid-event", handleEvent)
+    const handleReconnectAttempt = () => {
+      setError(null)
+    }
+
+    const handleServerClear = () => {
+      setEvents([])
+    }
+
+    const clearReconnectTimer = () => {
+      if (reconnectTimer !== null) {
+        clearTimeout(reconnectTimer)
+        reconnectTimer = null
+      }
+    }
 
     const connect = async () => {
+      if (cancelled || socket.connected || isConnecting) return
+      isConnecting = true
       try {
         await ensureSocketServer()
         if (!cancelled && !socket.connected) {
           socket.connect()
         }
       } catch (err) {
-        if (!cancelled) {
-          setError((err as Error).message)
-        }
+        isConnecting = false
+        setError((err as Error).message)
+        scheduleReconnect()
       }
     }
+
+    socket.on("connect", handleConnect)
+    socket.on("disconnect", handleDisconnect)
+    socket.on("connect_error", handleError)
+  socket.on("rfid-event", handleEvent)
+  socket.on("rfid-clear", handleServerClear)
+    socket.io.on("reconnect_attempt", handleReconnectAttempt)
 
     if (socket.connected) {
       handleConnect()
@@ -121,10 +167,13 @@ export function useRfidStream(options?: UseRfidStreamOptions) {
 
     return () => {
       cancelled = true
+      clearReconnectTimer()
       socket.off("connect", handleConnect)
       socket.off("disconnect", handleDisconnect)
       socket.off("connect_error", handleError)
-      socket.off("rfid-event", handleEvent)
+  socket.off("rfid-event", handleEvent)
+  socket.off("rfid-clear", handleServerClear)
+      socket.io.off("reconnect_attempt", handleReconnectAttempt)
     }
   }, [bufferSize])
 
