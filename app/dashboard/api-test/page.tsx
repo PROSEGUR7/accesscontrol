@@ -40,7 +40,14 @@ function getSeverityVariant(event: RfidEvent) {
     : "outline"
 }
 
-function describeEvent(event: RfidEvent) {
+type EnrichedEvent = RfidEvent & {
+  severity: "destructive" | "outline"
+  formattedTimestamp: string
+  readCount: number
+  lastSeen: string | null
+}
+
+function describeEvent(event: EnrichedEvent) {
   const pieces = [
     event.personaId ? `Persona #${event.personaId}` : null,
     event.objetoId ? `Objeto #${event.objetoId}` : null,
@@ -49,7 +56,11 @@ function describeEvent(event: RfidEvent) {
     event.antenaId ? `Antena #${event.antenaId}` : null,
   ].filter(Boolean)
 
-  return pieces.join(" · ") || "Sin metadatos"
+  const statsLabel = `Lecturas: ${event.readCount} · Última: ${event.lastSeen ? formatTimestamp(event.lastSeen) : "—"}`
+
+  const description = [statsLabel, ...pieces].filter(Boolean).join(" · ")
+
+  return description || "Sin metadatos"
 }
 
 export default function ApiTestPage() {
@@ -113,17 +124,40 @@ export default function ApiTestPage() {
     setSelectedIndex(0)
   }, [events.length])
 
-  const lastEvent = events[0] ?? null
-  const selectedEvent = events[selectedIndex] ?? null
-  const formattedEvents = useMemo(
-    () =>
-      events.map((event) => ({
+  const formattedEvents = useMemo(() => {
+    const stats = new Map<string, { count: number; lastSeen: string | null }>()
+
+    for (const event of events) {
+      const key = event.epc ?? "__missing__"
+      const ts = event.timestamp ?? null
+      const entry = stats.get(key)
+      if (!entry) {
+        stats.set(key, { count: 1, lastSeen: ts })
+      } else {
+        entry.count += 1
+        if (ts) {
+          if (!entry.lastSeen || new Date(ts).getTime() > new Date(entry.lastSeen).getTime()) {
+            entry.lastSeen = ts
+          }
+        }
+      }
+    }
+
+    return events.map((event) => {
+      const key = event.epc ?? "__missing__"
+      const stat = stats.get(key)
+      return {
         ...event,
         severity: getSeverityVariant(event),
         formattedTimestamp: formatTimestamp(event.timestamp),
-      })),
-    [events],
-  )
+        readCount: stat?.count ?? 1,
+        lastSeen: stat?.lastSeen ?? event.timestamp ?? null,
+      }
+    }) as EnrichedEvent[]
+  }, [events])
+
+  const lastEvent = events[0] ?? null
+  const selectedEvent = formattedEvents[selectedIndex] ?? null
 
   const handlePurge = async () => {
     setActionError(null)
@@ -266,6 +300,14 @@ export default function ApiTestPage() {
                   <span className="text-muted-foreground">Fecha:</span>
                   <span>{formatTimestamp(selectedEvent.timestamp)}</span>
                 </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Última lectura de este EPC:</span>
+                  <span>{selectedEvent.lastSeen ? formatTimestamp(selectedEvent.lastSeen) : "—"}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Lecturas registradas:</span>
+                  <span>{selectedEvent.readCount}</span>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { label: "Persona", value: selectedEvent.personaId },
@@ -281,7 +323,17 @@ export default function ApiTestPage() {
                 </div>
                 <div className="rounded-md bg-muted p-3 text-xs">
                   <pre className="max-h-72 overflow-auto text-xs">
-                    {JSON.stringify(selectedEvent, null, 2)}
+                    {JSON.stringify(
+                      {
+                        ...selectedEvent,
+                        severity: undefined,
+                        formattedTimestamp: undefined,
+                        readCount: undefined,
+                        lastSeen: undefined,
+                      },
+                      null,
+                      2,
+                    )}
                   </pre>
                 </div>
               </div>
