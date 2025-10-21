@@ -518,7 +518,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const insertions = await Promise.all(parsedPayloads.map(async ({ result }) => {
+  const limitedPayloads = parsedPayloads.slice(0, 50)
+
+  const insertions = await Promise.all(limitedPayloads.map(async ({ result }) => {
       const { epc, timestamp, tipo, personaId, objetoId, puertaId, lectorId, antenaId, rssi, direccion, motivo, extra } = result.data
 
       const ts = normalizeTimestamp(timestamp)
@@ -563,6 +565,10 @@ export async function POST(req: NextRequest) {
     for (const movement of formatted) {
       io?.emit("rfid-event", movement)
       logDebug("Movement stored", movement)
+    }
+
+    if (formatted.length === 1) {
+      return NextResponse.json({ movement: formatted[0], count: 1 })
     }
 
     return NextResponse.json({ movements: formatted, count: formatted.length })
