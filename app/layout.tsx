@@ -8,8 +8,19 @@ import { cn } from "@/lib/utils"
 
 import "./globals.css"
 
-const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+  preload: false,
+  display: "swap",
+})
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+  preload: false,
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: "Sistema de Control de Acceso RFID",
