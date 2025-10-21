@@ -67,6 +67,8 @@ const FIELD_ALIASES: Record<string, string[]> = {
   extra: ["extra", "metadata", "details", "payload"],
 }
 
+const DEFAULT_EVENT_TYPE = "SIMPLE"
+
 function normalizeKey(key: string) {
   return key.toLowerCase().replace(/[^a-z0-9]/g, "")
 }
@@ -294,21 +296,31 @@ function collectPayloadCandidates(raw: unknown): SimpleObject[] {
 
     if (!isPlainObject(current)) continue
     const simple = current as SimpleObject
+    let candidateProduced = false
+
     if (hasOwnAlias(simple, FIELD_ALIASES.epc)) {
       candidates.push(simple)
-      continue
-    }
-
-    let pushedChild = false
-    for (const value of Object.values(simple)) {
-      if (value && typeof value === "object") {
-        stack.push(value)
-        pushedChild = true
+      candidateProduced = true
+    } else {
+      const dataValue = simple.data
+      if (isPlainObject(dataValue) && hasOwnAlias(dataValue, FIELD_ALIASES.epc)) {
+        const merged: SimpleObject = { ...dataValue, ...simple }
+        if (merged.extra === undefined) {
+          merged.extra = dataValue
+        }
+        candidates.push(merged)
+        candidateProduced = true
       }
     }
 
-    if (!pushedChild) {
+    if (!candidateProduced) {
       candidates.push(simple)
+    }
+
+    for (const value of Object.values(simple)) {
+      if (value && typeof value === "object") {
+        stack.push(value)
+      }
     }
   }
 
@@ -543,9 +555,11 @@ export async function POST(req: NextRequest) {
         return extra
       })()
 
+      const resolvedType = typeof tipo === "string" && tipo.trim() ? tipo.trim() : DEFAULT_EVENT_TYPE
+
       return insertMovement({
         ts,
-        tipo: tipo ?? null,
+        tipo: resolvedType,
         epc,
         persona,
         objeto,
