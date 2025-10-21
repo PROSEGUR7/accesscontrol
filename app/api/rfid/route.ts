@@ -111,6 +111,37 @@ function tryParseXml(raw: string) {
   }
 }
 
+function coerceScalar(value: string) {
+  const trimmed = value.trim()
+  if (trimmed === "") return ""
+  if (/^(true|false)$/i.test(trimmed)) return trimmed.toLowerCase() === "true"
+  if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
+    const numeric = Number(trimmed)
+    if (Number.isFinite(numeric)) return numeric
+  }
+  return trimmed
+}
+
+function tryParseBareObject(raw: string) {
+  const withoutBraces = raw.replace(/^\s*\{\s*/, "").replace(/\s*\}\s*$/, "")
+  if (!withoutBraces) return null
+
+  const entries = withoutBraces.split(/[\r\n;,]+/)
+  const result: Record<string, unknown> = {}
+
+  for (const entry of entries) {
+    if (!entry) continue
+    const [rawKey, rawValue] = entry.split(/[:=]/, 2)
+    if (!rawKey) continue
+    const key = rawKey.trim()
+    if (!key) continue
+    if (rawValue === undefined) continue
+    result[key] = coerceScalar(rawValue)
+  }
+
+  return Object.keys(result).length > 0 ? result : null
+}
+
 function coercePayload(raw: string, contentType: string | null) {
   const trimmed = raw.trim()
   if (!trimmed) return null
@@ -150,6 +181,9 @@ function coercePayload(raw: string, contentType: string | null) {
 
   const form = attemptForm()
   if (form !== null) return form
+
+  const bareObject = tryParseBareObject(trimmed)
+  if (bareObject !== null) return bareObject
 
   return trimmed
 }
