@@ -270,6 +270,57 @@ function normalizePayload(raw: unknown) {
   return normalized
 }
 
+let ensureDuplicatesPromise: Promise<void> | null = null
+
+async function ensureDuplicateEpcAllowed() {
+  if (ensureDuplicatesPromise) {
+    return ensureDuplicatesPromise
+  }
+
+  ensureDuplicatesPromise = (async () => {
+    try {
+      await query(
+        `DO $$
+        DECLARE
+          constraint_name text;
+          index_name text;
+        BEGIN
+          FOR constraint_name IN
+            SELECT conname
+            FROM pg_constraint
+            WHERE conrelid = 'movimientos'::regclass
+              AND contype = 'u'
+              AND cardinality(conkey) = 1
+              AND (
+                SELECT attname
+                FROM pg_attribute
+                WHERE attrelid = conrelid AND attnum = conkey[1]
+              ) = 'epc'
+          LOOP
+            EXECUTE format('ALTER TABLE movimientos DROP CONSTRAINT %I', constraint_name);
+          END LOOP;
+
+          FOR index_name IN
+            SELECT indexname
+            FROM pg_indexes
+            WHERE tablename = 'movimientos'
+              AND schemaname = ANY(current_schemas(false))
+              AND indexdef ILIKE 'CREATE UNIQUE INDEX%'
+              AND indexdef LIKE '%(epc%'
+          LOOP
+            EXECUTE format('DROP INDEX IF EXISTS %I', index_name);
+          END LOOP;
+        END $$;`,
+      )
+    } catch (error) {
+      console.warn(`${LOG_PREFIX} Failed to drop EPC unique constraint`, error)
+      ensureDuplicatesPromise = null
+    }
+  })()
+
+  return ensureDuplicatesPromise
+}
+
 function toOptionalNumber(value: string | number | undefined) {
   if (value === undefined) return null
   const numeric = typeof value === "number" ? value : Number(value)
@@ -346,6 +397,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    await ensureDuplicateEpcAllowed()
+
     const { epc, timestamp, tipo, personaId, objetoId, puertaId, lectorId, antenaId, rssi, direccion, motivo, extra } = parsed.data
 
     const ts = normalizeTimestamp(timestamp)
