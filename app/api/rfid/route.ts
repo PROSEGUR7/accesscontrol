@@ -317,7 +317,10 @@ function collectPayloadCandidates(raw: unknown): SimpleObject[] {
       candidates.push(simple)
     }
 
-    for (const value of Object.values(simple)) {
+    for (const [key, value] of Object.entries(simple)) {
+      if (candidateProduced && key === "data") {
+        continue
+      }
       if (value && typeof value === "object") {
         stack.push(value)
       }
