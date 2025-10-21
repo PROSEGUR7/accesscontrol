@@ -53,7 +53,7 @@ const xmlParser = new XMLParser({
 type SimpleObject = Record<string, unknown>
 
 const FIELD_ALIASES: Record<string, string[]> = {
-  epc: ["epc", "tagid", "tagvalue", "id", "tagidhex", "tagiddec"],
+  epc: ["epc", "tagid", "tagvalue", "id", "tagidhex", "tagiddec", "idhex", "ih"],
   timestamp: ["timestamp", "ts", "time", "eventtime", "datetime", "created", "occuredat"],
   tipo: ["tipo", "type", "eventtype", "movementtype"],
   personaId: ["personaid", "persona_id", "personid", "person", "workerid"],
@@ -253,6 +253,13 @@ function normalizePayload(raw: unknown) {
       normalized[targetKey] = targetKey === "epc" && typeof value !== "string"
         ? String(value)
         : value
+    }
+  }
+
+  if (normalized.epc === undefined) {
+    const fallback = findValue(root, ["idhex", "id", "tagid", "tagidhex"])
+    if (fallback !== undefined) {
+      normalized.epc = typeof fallback === "string" ? fallback : String(fallback)
     }
   }
 
