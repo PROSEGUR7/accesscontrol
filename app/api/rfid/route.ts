@@ -233,7 +233,12 @@ function findValue(source: unknown, aliases: string[]): unknown {
   return undefined
 }
 
-function normalizePayload(raw: unknown) {
+function hasOwnAlias(obj: SimpleObject, aliases: string[]) {
+  const keys = Object.keys(obj).map((key) => normalizeKey(key))
+  return aliases.some((alias) => keys.includes(normalizeKey(alias)))
+}
+
+function normalizeSinglePayload(raw: unknown) {
   const root = Array.isArray(raw)
     ? raw.find((item) => isPlainObject(item)) ?? raw[0]
     : raw
@@ -268,6 +273,46 @@ function normalizePayload(raw: unknown) {
   }
 
   return normalized
+}
+
+function collectPayloadCandidates(raw: unknown): SimpleObject[] {
+  const candidates: SimpleObject[] = []
+  const stack: unknown[] = [raw]
+  const visited = new Set<unknown>()
+
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (!current || visited.has(current)) continue
+    visited.add(current)
+
+    if (Array.isArray(current)) {
+      for (const item of current) {
+        stack.push(item)
+      }
+      continue
+    }
+
+    if (!isPlainObject(current)) continue
+    const simple = current as SimpleObject
+    if (hasOwnAlias(simple, FIELD_ALIASES.epc)) {
+      candidates.push(simple)
+      continue
+    }
+
+    let pushedChild = false
+    for (const value of Object.values(simple)) {
+      if (value && typeof value === "object") {
+        stack.push(value)
+        pushedChild = true
+      }
+    }
+
+    if (!pushedChild) {
+      candidates.push(simple)
+    }
+  }
+
+  return candidates
 }
 
 let ensureDuplicatesPromise: Promise<void> | null = null
@@ -448,66 +493,79 @@ export async function POST(req: NextRequest) {
 
   const coerced = coercePayload(rawBody, contentType)
   logDebug("Coerced payload", coerced)
-  const normalizedPayload = normalizePayload(coerced)
-  logDebug("Normalized payload", normalizedPayload)
 
-  const parsed = payloadSchema.safeParse(normalizedPayload)
+  const candidateObjects = collectPayloadCandidates(coerced)
+  const normalizedPayloads = candidateObjects.length
+    ? candidateObjects.map((candidate) => normalizeSinglePayload(candidate))
+    : [normalizeSinglePayload(coerced)]
 
-  if (!parsed.success) {
-    logDebug("Validation failed", parsed.error.flatten())
+  logDebug("Normalized payloads", normalizedPayloads)
+
+  const parsedPayloads = normalizedPayloads
+    .map((payload) => ({ payload, result: payloadSchema.safeParse(payload) }))
+    .filter((entry) => entry.result.success) as Array<{
+      payload: Record<string, unknown>
+      result: { success: true; data: z.infer<typeof payloadSchema> }
+    }>
+
+  if (!parsedPayloads.length) {
+    logDebug("Validation failed", normalizedPayloads)
     return NextResponse.json({
       ok: false,
       error: "Invalid payload",
-      issues: parsed.error.flatten(),
+      issues: normalizedPayloads,
     }, { status: 200 })
   }
 
   try {
-    const { epc, timestamp, tipo, personaId, objetoId, puertaId, lectorId, antenaId, rssi, direccion, motivo, extra } = parsed.data
+    const insertions = await Promise.all(parsedPayloads.map(async ({ result }) => {
+      const { epc, timestamp, tipo, personaId, objetoId, puertaId, lectorId, antenaId, rssi, direccion, motivo, extra } = result.data
 
-    const ts = normalizeTimestamp(timestamp)
-    const persona = toOptionalNumber(personaId)
-    const objeto = toOptionalNumber(objetoId)
-    const puerta = toOptionalNumber(puertaId)
-    const lector = toOptionalNumber(lectorId)
-    const antena = toOptionalNumber(antenaId)
-    const signal = toOptionalRssi(rssi)
+      const ts = normalizeTimestamp(timestamp)
+      const persona = toOptionalNumber(personaId)
+      const objeto = toOptionalNumber(objetoId)
+      const puerta = toOptionalNumber(puertaId)
+      const lector = toOptionalNumber(lectorId)
+      const antena = toOptionalNumber(antenaId)
+      const signal = toOptionalRssi(rssi)
 
-    const extraPayload = (() => {
-      if (extra === undefined) return null
-      if (typeof extra === "string") {
-        try {
-          return JSON.parse(extra)
-        } catch {
-          return extra
+      const extraPayload = (() => {
+        if (extra === undefined) return null
+        if (typeof extra === "string") {
+          try {
+            return JSON.parse(extra)
+          } catch {
+            return extra
+          }
         }
-      }
-      return extra
-    })()
+        return extra
+      })()
 
-    const movement = await insertMovement({
-      ts,
-      tipo: tipo ?? null,
-      epc,
-      persona,
-      objeto,
-      puerta,
-      lector,
-      antena,
-      signal,
-      direccion: direccion ?? null,
-      motivo: motivo ?? null,
-      extra: extraPayload,
-    })
+      return insertMovement({
+        ts,
+        tipo: tipo ?? null,
+        epc,
+        persona,
+        objeto,
+        puerta,
+        lector,
+        antena,
+        signal,
+        direccion: direccion ?? null,
+        motivo: motivo ?? null,
+        extra: extraPayload,
+      })
+    }))
 
-    const formatted = formatMovement(movement)
+    const formatted = insertions.map((movement) => formatMovement(movement))
 
     const io = getSocketServer()
-    io?.emit("rfid-event", formatted)
+    for (const movement of formatted) {
+      io?.emit("rfid-event", movement)
+      logDebug("Movement stored", movement)
+    }
 
-    logDebug("Movement stored", formatted)
-
-    return NextResponse.json({ movement: formatted })
+    return NextResponse.json({ movements: formatted, count: formatted.length })
   } catch (error) {
     logDebug("Processing error", (error as Error).message)
     return NextResponse.json({ error: "Failed to process RFID payload", details: (error as Error).message }, { status: 500 })
