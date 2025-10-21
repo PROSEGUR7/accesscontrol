@@ -321,6 +321,72 @@ async function ensureDuplicateEpcAllowed() {
   return ensureDuplicatesPromise
 }
 
+type InsertMovementParams = {
+  ts: Date
+  tipo: string | null
+  epc: string
+  persona: number | null
+  objeto: number | null
+  puerta: number | null
+  lector: number | null
+  antena: number | null
+  signal: number | null
+  direccion: string | null
+  motivo: string | null
+  extra: unknown
+}
+
+async function insertMovement(params: InsertMovementParams, attempt = 0): Promise<MovementRow> {
+  try {
+    const rows = await query<MovementRow>(
+      `INSERT INTO movimientos (
+        ts,
+        tipo,
+        epc,
+        persona_id,
+        objeto_id,
+        puerta_id,
+        lector_id,
+        antena_id,
+        rssi,
+        direccion,
+        motivo,
+        extra
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING id, ts, tipo, epc, persona_id, objeto_id, puerta_id, lector_id, antena_id, rssi, direccion, motivo, extra, created_at`,
+      [
+        params.ts,
+        params.tipo,
+        params.epc,
+        params.persona,
+        params.objeto,
+        params.puerta,
+        params.lector,
+        params.antena,
+        params.signal,
+        params.direccion,
+        params.motivo,
+        params.extra,
+      ],
+    )
+
+    const [movement] = rows
+    if (!movement) {
+      throw new Error("Movement record not created")
+    }
+    return movement
+  } catch (error) {
+    const pgError = error as { code?: string }
+    if (pgError?.code === "23505" && attempt === 0) {
+      console.warn(`${LOG_PREFIX} EPC duplicate detected, retrying after dropping constraints`)
+      ensureDuplicatesPromise = null
+      await ensureDuplicateEpcAllowed()
+      return insertMovement(params, attempt + 1)
+    }
+    throw error
+  }
+}
+
 function toOptionalNumber(value: string | number | undefined) {
   if (value === undefined) return null
   const numeric = typeof value === "number" ? value : Number(value)
@@ -397,8 +463,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await ensureDuplicateEpcAllowed()
-
     const { epc, timestamp, tipo, personaId, objetoId, puertaId, lectorId, antenaId, rssi, direccion, motivo, extra } = parsed.data
 
     const ts = normalizeTimestamp(timestamp)
@@ -421,28 +485,20 @@ export async function POST(req: NextRequest) {
       return extra
     })()
 
-    const [movement] = await query<MovementRow>(
-      `INSERT INTO movimientos (
-        ts,
-        tipo,
-        epc,
-        persona_id,
-        objeto_id,
-        puerta_id,
-        lector_id,
-        antena_id,
-        rssi,
-        direccion,
-        motivo,
-        extra
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING id, ts, tipo, epc, persona_id, objeto_id, puerta_id, lector_id, antena_id, rssi, direccion, motivo, extra, created_at`,
-  [ts, tipo ?? null, epc, persona, objeto, puerta, lector, antena, signal, direccion ?? null, motivo ?? null, extraPayload],
-    )
-
-    if (!movement) {
-      return NextResponse.json({ error: "Movement record not created" }, { status: 500 })
-    }
+    const movement = await insertMovement({
+      ts,
+      tipo: tipo ?? null,
+      epc,
+      persona,
+      objeto,
+      puerta,
+      lector,
+      antena,
+      signal,
+      direccion: direccion ?? null,
+      motivo: motivo ?? null,
+      extra: extraPayload,
+    })
 
     const formatted = formatMovement(movement)
 
@@ -457,6 +513,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to process RFID payload", details: (error as Error).message }, { status: 500 })
   }
 }
+
+void ensureDuplicateEpcAllowed().catch((error) => {
+  console.warn(`${LOG_PREFIX} Startup duplicate EPC guard failed`, error)
+})
 
 export async function GET(req: NextRequest) {
   const limitParam = Number(req.nextUrl.searchParams.get("limit") ?? "100")
