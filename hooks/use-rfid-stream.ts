@@ -59,7 +59,8 @@ function getClientSocket() {
   if (!window.__rfidSocket) {
     window.__rfidSocket = io({
       path: SOCKET_PATH,
-      transports: ["websocket", "polling"],
+      transports: ["polling"],
+      upgrade: false,
       autoConnect: false,
     })
   }
