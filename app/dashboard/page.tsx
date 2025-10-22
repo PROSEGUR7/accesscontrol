@@ -311,7 +311,12 @@ export default function DashboardPage() {
                 <XAxis dataKey="name" stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
                 <YAxis stroke="var(--muted-foreground)" tickLine={false} axisLine={false} width={32} />
                 <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent hideLabel />} />
-                <Bar dataKey="accesos" radius={[8, 8, 4, 4]} fill="var(--primary)" />
+                <Bar
+                  dataKey="accesos"
+                  radius={[8, 8, 4, 4]}
+                  fill="var(--primary)"
+                  isAnimationActive={false}
+                />
               </BarChart>
             </ChartContainer>
           </CardContent>
