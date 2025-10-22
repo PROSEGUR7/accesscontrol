@@ -41,16 +41,6 @@ const chartConfig = {
   },
 }
 
-const chartFallback = [
-  { name: "Lun", accesos: 0 },
-  { name: "Mar", accesos: 0 },
-  { name: "Mié", accesos: 0 },
-  { name: "Jue", accesos: 0 },
-  { name: "Vie", accesos: 0 },
-  { name: "Sáb", accesos: 0 },
-  { name: "Dom", accesos: 0 },
-]
-
 const fallbackActivity: ActivityItem[] = [
   {
     id: "fallback-1",
@@ -137,7 +127,7 @@ export default function DashboardPage() {
 
   const chartData = useMemo(() => {
     if (!metrics?.chart?.length) {
-      return chartFallback
+      return []
     }
 
     return metrics.chart.map((entry) => {
@@ -305,20 +295,30 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-64">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                <XAxis dataKey="name" stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--muted-foreground)" tickLine={false} axisLine={false} width={32} />
-                <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent hideLabel />} />
-                <Bar
-                  dataKey="accesos"
-                  radius={[8, 8, 4, 4]}
-                  fill="var(--primary)"
-                  isAnimationActive={false}
-                />
-              </BarChart>
-            </ChartContainer>
+            {loadingMetrics ? (
+              <div className="flex h-64 items-center justify-center">
+                <Skeleton className="h-56 w-full" />
+              </div>
+            ) : chartData.length > 0 ? (
+              <ChartContainer config={chartConfig} className="h-64" key="accesses-chart">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                  <XAxis dataKey="name" stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--muted-foreground)" tickLine={false} axisLine={false} width={32} />
+                  <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent hideLabel />} />
+                  <Bar
+                    dataKey="accesos"
+                    radius={[8, 8, 4, 4]}
+                    fill="var(--primary)"
+                    isAnimationActive={false}
+                  />
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-border/60 text-sm text-muted-foreground">
+                Aún no hay lecturas registradas en los últimos días.
+              </div>
+            )}
           </CardContent>
         </Card>
 
