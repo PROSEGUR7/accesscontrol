@@ -1,6 +1,7 @@
 "use client"
 
 import { Activity, Building2, DoorClosed, FileBarChart, KeySquare, LayoutDashboard, MapPin, Users } from "lucide-react"
+import type { ComponentProps } from "react"
 
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
@@ -13,7 +14,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-const data = {
+const fallbackData = {
   user: {
     name: "Adriana Duarte",
     email: "admin@rfid-access.com",
@@ -64,17 +65,29 @@ const data = {
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+type AppSidebarUser = {
+  name: string
+  email: string
+  avatar?: string
+}
+
+type AppSidebarProps = ComponentProps<typeof Sidebar> & {
+  user?: AppSidebarUser
+}
+
+export function AppSidebar({ user, ...props }: AppSidebarProps) {
+  const resolvedUser = user ?? fallbackData.user
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <TeamSwitcher teams={fallbackData.teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={fallbackData.navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={resolvedUser} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

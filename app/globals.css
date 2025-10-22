@@ -135,14 +135,14 @@
 }
 
 @media (pointer: coarse) {
-  body.cursor-none {
+  body.custom-cursor-hidden {
     cursor: auto;
   }
 }
 
 @media (pointer: fine) {
-  body.cursor-none,
-  body.cursor-none * {
+  body.custom-cursor-hidden,
+  body.custom-cursor-hidden * {
     cursor: none !important;
   }
 }

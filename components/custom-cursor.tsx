@@ -43,13 +43,30 @@ export const CustomCursor = () => {
     }
   }, [])
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined
+
+    const body = document.body
+    if (!body) return undefined
+
+    if (isEnabled && isVisible) {
+      body.classList.add('custom-cursor-hidden')
+    } else {
+      body.classList.remove('custom-cursor-hidden')
+    }
+
+    return () => {
+      body.classList.remove('custom-cursor-hidden')
+    }
+  }, [isEnabled, isVisible])
+
   if (!isEnabled) return null
 
   return (
     <Cursor
       aria-hidden
       className={cn(
-        'pointer-events-none fixed z-[100] flex -translate-x-[1px] -translate-y-[1px] transition-opacity duration-150 ease-out',
+        'pointer-events-none fixed z-[2147483647] flex -translate-x-[1px] -translate-y-[1px] transition-opacity duration-150 ease-out',
         isVisible ? 'opacity-100' : 'opacity-0'
       )}
       style={{ left: `${position.x}px`, top: `${position.y}px` }}

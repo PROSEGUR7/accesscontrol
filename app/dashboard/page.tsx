@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
 import { useRfidStream } from "@/hooks/use-rfid-stream"
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type ActivityItem = {
   id: string
@@ -22,42 +24,15 @@ type ActivityItem = {
   variant: "outline" | "destructive"
 }
 
-const stats = [
-  {
-    title: "Accesos Hoy",
-    value: "1,234",
-    trend: "+12.5% desde ayer",
-    trendVariant: "success" as const,
-  },
-  {
-    title: "Personal Activo",
-    value: "342",
-    trend: "+3.2% desde ayer",
-    trendVariant: "success" as const,
-  },
-  {
-    title: "Puertas Monitoreadas",
-    value: "24",
-    trend: "0% desde ayer",
-    trendVariant: "muted" as const,
-  },
-  {
-    title: "Accesos Denegados",
-    value: "12",
-    trend: "-8.3% desde ayer",
-    trendVariant: "destructive" as const,
-  },
-]
-
-const chartData = [
-  { name: "Lun", accesos: 220 },
-  { name: "Mar", accesos: 260 },
-  { name: "Mié", accesos: 250 },
-  { name: "Jue", accesos: 310 },
-  { name: "Vie", accesos: 270 },
-  { name: "Sáb", accesos: 140 },
-  { name: "Dom", accesos: 110 },
-]
+type DashboardMetricsResponse = {
+  stats: {
+    accessesToday: { value: number; trend: number | null }
+    activePeople: number
+    monitoredDoors: number
+    deniedToday: { value: number; trend: number | null }
+  }
+  chart: { day: string; total: number }[]
+}
 
 const chartConfig = {
   accesos: {
@@ -65,6 +40,16 @@ const chartConfig = {
     color: "var(--primary)",
   },
 }
+
+const chartFallback = [
+  { name: "Lun", accesos: 0 },
+  { name: "Mar", accesos: 0 },
+  { name: "Mié", accesos: 0 },
+  { name: "Jue", accesos: 0 },
+  { name: "Vie", accesos: 0 },
+  { name: "Sáb", accesos: 0 },
+  { name: "Dom", accesos: 0 },
+]
 
 const fallbackActivity: ActivityItem[] = [
   {
@@ -110,7 +95,125 @@ const fallbackActivity: ActivityItem[] = [
 ]
 
 export default function DashboardPage() {
+  const [metrics, setMetrics] = useState<DashboardMetricsResponse | null>(null)
+  const [metricsError, setMetricsError] = useState<string | null>(null)
+  const [loadingMetrics, setLoadingMetrics] = useState(true)
   const { events, connected, error } = useRfidStream({ bufferSize: 25 })
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadMetrics() {
+      try {
+        setLoadingMetrics(true)
+        setMetricsError(null)
+
+        const response = await fetch("/api/dashboard/metrics", {
+          method: "GET",
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error(`metrics_request_failed_${response.status}`)
+        }
+
+        const data = (await response.json()) as DashboardMetricsResponse
+        setMetrics(data)
+      } catch (fetchError) {
+        if ((fetchError as Error).name === "AbortError") return
+        console.error("Error loading dashboard metrics", fetchError)
+        setMetricsError("No se pudieron cargar las métricas en tiempo real.")
+      } finally {
+        setLoadingMetrics(false)
+      }
+    }
+
+    void loadMetrics()
+
+    return () => {
+      controller.abort()
+    }
+  }, [])
+
+  const chartData = useMemo(() => {
+    if (!metrics?.chart?.length) {
+      return chartFallback
+    }
+
+    return metrics.chart.map((entry) => {
+      const date = new Date(entry.day)
+      const weekday = date.toLocaleDateString("es-MX", { weekday: "short" })
+      const normalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1)
+
+      return {
+        name: normalizedWeekday,
+        accesos: entry.total,
+      }
+    })
+  }, [metrics])
+
+  const statCards = useMemo(() => {
+    if (!metrics) {
+      return []
+    }
+
+    const formatValue = (value: number) => value.toLocaleString("es-MX")
+
+    const formatTrend = (trend: number | null, positiveIsGood: boolean) => {
+      if (trend === null) {
+        return {
+          label: "Sin datos de comparación",
+          variant: "muted" as const,
+        }
+      }
+
+      const formatted = `${trend > 0 ? "+" : ""}${trend.toLocaleString("es-MX", {
+        maximumFractionDigits: 1,
+        minimumFractionDigits: 0,
+      })}% vs ayer`
+
+      const isPositive = trend >= 0
+      const variant = positiveIsGood
+        ? isPositive
+          ? ("success" as const)
+          : ("destructive" as const)
+        : isPositive
+          ? ("destructive" as const)
+          : ("success" as const)
+
+      return { label: formatted, variant }
+    }
+
+    const accessesTrend = formatTrend(metrics.stats.accessesToday.trend, true)
+    const deniedTrend = formatTrend(metrics.stats.deniedToday.trend, false)
+
+    return [
+      {
+        title: "Accesos Hoy",
+        value: formatValue(metrics.stats.accessesToday.value),
+        trend: accessesTrend.label,
+        trendVariant: accessesTrend.variant,
+      },
+      {
+        title: "Personal Activo",
+        value: formatValue(metrics.stats.activePeople),
+        trend: "Personal habilitado actualmente",
+        trendVariant: "muted" as const,
+      },
+      {
+        title: "Puertas Monitoreadas",
+        value: formatValue(metrics.stats.monitoredDoors),
+        trend: "Puertas activas en la red",
+        trendVariant: "muted" as const,
+      },
+      {
+        title: "Accesos Denegados",
+        value: formatValue(metrics.stats.deniedToday.value),
+        trend: deniedTrend.label,
+        trendVariant: deniedTrend.variant,
+      },
+    ]
+  }, [metrics])
 
   const activityItems: ActivityItem[] = events.length
     ? events.map((event) => {
@@ -150,32 +253,46 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {stats.map((item) => (
-          <Card key={item.title} className="border-border/60">
-            <CardHeader className="pb-0">
-              <CardTitle className="text-base font-medium text-muted-foreground">
-                {item.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <p className="text-3xl font-semibold tracking-tight text-foreground">
-                {item.value}
-              </p>
-              <p
-                className={`text-xs ${
-                  item.trendVariant === 'success'
-                    ? 'text-emerald-500'
-                    : item.trendVariant === 'destructive'
-                      ? 'text-red-500'
-                      : 'text-muted-foreground'
-                }`}
-              >
-                {item.trend}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+        {loadingMetrics
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <Card key={`metrics-skeleton-${index}`} className="border-border/60">
+                <CardHeader className="pb-0">
+                  <Skeleton className="h-4 w-24" />
+                </CardHeader>
+                <CardContent className="space-y-2 pt-2">
+                  <Skeleton className="h-8 w-20" />
+                  <Skeleton className="h-3 w-32" />
+                </CardContent>
+              </Card>
+            ))
+          : statCards.map((item) => (
+              <Card key={item.title} className="border-border/60">
+                <CardHeader className="pb-0">
+                  <CardTitle className="text-base font-medium text-muted-foreground">
+                    {item.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  <p className="text-3xl font-semibold tracking-tight text-foreground">
+                    {item.value}
+                  </p>
+                  <p
+                    className={`text-xs ${
+                      item.trendVariant === 'success'
+                        ? 'text-emerald-500'
+                        : item.trendVariant === 'destructive'
+                          ? 'text-red-500'
+                          : 'text-muted-foreground'
+                    }`}
+                  >
+                    {item.trend}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
       </div>
+
+      {metricsError ? <p className="text-sm text-red-500">{metricsError}</p> : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="border-border/60 lg:col-span-2">

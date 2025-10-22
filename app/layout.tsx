@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 
 import { CustomCursor } from "@/components/custom-cursor"
+import { Toaster } from "@/components/ui/toaster"
 import { cn } from "@/lib/utils"
 
 import "./globals.css"
@@ -36,11 +37,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={cn(geistSans.variable, geistMono.variable, "font-sans antialiased cursor-none")}
+        className={cn(geistSans.variable, geistMono.variable, "font-sans antialiased")}
         suppressHydrationWarning
       >
         <CustomCursor />
         {children}
+  <Toaster />
         <Analytics />
       </body>
     </html>
