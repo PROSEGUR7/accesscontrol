@@ -8,7 +8,7 @@ import { personUpsertSchema } from "../route"
 import { PERSON_COLUMNS, mapPerson, type PersonRow } from "../persona-utils"
 
 const paramsSchema = z.object({
-  id: z.string().min(1, "El identificador es obligatorio"),
+  id: z.coerce.number().int().positive("El identificador es obligatorio"),
 })
 
 type Params = {
@@ -23,10 +23,7 @@ export async function DELETE(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "Identificador inválido" }, { status: 400 })
   }
 
-  const id = Number(parsed.data.id)
-  if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json({ error: "Identificador inválido" }, { status: 400 })
-  }
+  const id = parsed.data.id
 
   try {
     const rows = await query<PersonRow>(
@@ -60,10 +57,7 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Identificador inválido" }, { status: 400 })
   }
 
-  const id = Number(parsed.data.id)
-  if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json({ error: "Identificador inválido" }, { status: 400 })
-  }
+  const id = parsed.data.id
 
   let payload: unknown
   try {
