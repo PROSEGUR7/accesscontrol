@@ -110,6 +110,20 @@ export async function PATCH(request: Request, { params }: Params) {
   const normalized = normalizeKeyPayload(result.data)
 
   try {
+    if (normalized.rfidEpc) {
+      const [personaConflict] = await query<{ id: number }>(
+        `SELECT id FROM personas WHERE rfid_epc = $1 LIMIT 1`,
+        [normalized.rfidEpc],
+      )
+
+      if (personaConflict) {
+        return NextResponse.json(
+          { error: "El EPC ya está asignado a una persona" },
+          { status: 409 },
+        )
+      }
+    }
+
     const typeFilters = getTypeFilters()
 
     const baseQuery = `WITH updated AS (

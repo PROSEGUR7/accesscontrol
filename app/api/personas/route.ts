@@ -77,6 +77,20 @@ export async function POST(request: NextRequest) {
   const habilitadoHasta = data.habilitadoHasta ? new Date(data.habilitadoHasta) : null
 
   try {
+    if (rfidEpc) {
+      const [keyConflict] = await query<{ id: number }>(
+        `SELECT id FROM objetos WHERE rfid_epc = $1 LIMIT 1`,
+        [rfidEpc],
+      )
+
+      if (keyConflict) {
+        return NextResponse.json(
+          { error: "El EPC RFID ya está asignado a una llave" },
+          { status: 409 },
+        )
+      }
+    }
+
     const rows = await query<PersonRow>(
       `INSERT INTO personas (
         nombre,
