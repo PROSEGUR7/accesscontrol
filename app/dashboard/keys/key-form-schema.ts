@@ -46,7 +46,7 @@ export const keyFormSchema = z
       if (Number.isNaN(parsed.getTime())) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "La fecha de compra no es válida",
+          message: "La fecha de creación no es válida",
           path: ["fechaCompra"],
         })
       }

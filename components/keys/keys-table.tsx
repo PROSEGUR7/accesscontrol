@@ -318,7 +318,7 @@ export function KeysTable({
     },
     {
       accessorKey: "fechaCompra",
-      header: "Compra",
+      header: "Creación",
       cell: ({ row }: { row: Row<Key> }) => (
         <div className="flex items-center gap-2 text-sm">
           <CalendarClock className="size-4 text-muted-foreground" />

@@ -238,7 +238,7 @@ export default function KeysPage() {
       item.ubicacionNombre ? `Ubicación: ${item.ubicacionNombre}` : null,
       item.zonaActual ? `Zona: ${item.zonaActual}` : null,
       item.valor ? `Valor: ${formatCurrency(item.valor)}` : null,
-      item.fechaCompra ? `Compra: ${formatDateTime(item.fechaCompra)}` : null,
+  item.fechaCompra ? `Creación: ${formatDateTime(item.fechaCompra)}` : null,
     ].filter(Boolean)
       .join(" · ");
 
@@ -565,11 +565,11 @@ export default function KeysPage() {
                       name="fechaCompra"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Fecha de compra</FormLabel>
+                          <FormLabel>Fecha de creación</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} value={field.value ?? ""} />
                           </FormControl>
-                          <FormDescription>Opcional, registra la fecha de adquisición.</FormDescription>
+                          <FormDescription>Opcional, registra cuándo se creó la llave.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
