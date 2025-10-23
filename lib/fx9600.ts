@@ -19,12 +19,14 @@ function sanitizeHost(readerIp: string) {
 function buildUrl(readerIp: string, gpoPin: number) {
   const host = sanitizeHost(readerIp)
   if (URL_TEMPLATE) {
+    const portPart = DEFAULT_PORT ? DEFAULT_PORT : ""
     return URL_TEMPLATE
       .replace(/\{\s*readerIp\s*\}/giu, host)
       .replace(/\{\s*host\s*\}/giu, host)
       .replace(/\{\s*pin\s*\}/giu, String(gpoPin))
       .replace(/\{\s*gpoPin\s*\}/giu, String(gpoPin))
       .replace(/\{\s*protocol\s*\}/giu, DEFAULT_PROTOCOL)
+      .replace(/\{\s*port\s*\}/giu, portPart)
   }
 
   const portPart = DEFAULT_PORT ? `:${DEFAULT_PORT}` : ""
