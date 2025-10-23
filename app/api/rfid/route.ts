@@ -268,7 +268,7 @@ function normalizeSinglePayload(raw: unknown) {
   }
 
   if (normalized.epc === undefined) {
-    const fallback = findValue(root, ["idhex", "id", "tagid", "tagidhex"])
+    const fallback = findValue(root, ["idhex", "tagid", "tagidhex"])
     if (fallback !== undefined) {
       normalized.epc = typeof fallback === "string" ? fallback : String(fallback)
     }
