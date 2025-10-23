@@ -584,9 +584,9 @@ export default function KeysPage() {
                         <FormItem>
                           <FormLabel>Etiqueta RFID (EPC)</FormLabel>
                           <FormControl>
-                            <Input placeholder="24-BD-9C-..." {...field} value={field.value ?? ""} />
+                            <Input placeholder="Ej. 9000..." maxLength={24} {...field} value={field.value ?? ""} />
                           </FormControl>
-                          <FormDescription>Debe ser única en el sistema.</FormDescription>
+                          <FormDescription>Debe ser única y contener 24 caracteres.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}

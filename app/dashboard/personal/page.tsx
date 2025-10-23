@@ -442,9 +442,9 @@ export default function PersonalPage() {
 											<FormItem>
 												<FormLabel>Etiqueta RFID (EPC)</FormLabel>
 												<FormControl>
-													<Input placeholder="24-BD-9C-..." {...field} value={field.value ?? ""} />
+													<Input placeholder="Ej. 9000..." maxLength={24} {...field} value={field.value ?? ""} />
 												</FormControl>
-												<FormDescription>Debe ser única dentro del sistema.</FormDescription>
+												<FormDescription>Opcional. Si se captura debe ser único y contener 24 caracteres.</FormDescription>
 												<FormMessage />
 											</FormItem>
 										)}

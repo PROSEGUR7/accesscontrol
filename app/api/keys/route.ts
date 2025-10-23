@@ -22,11 +22,17 @@ const typeFilters = getTypeFilters()
 const optionalString = (limit: number, message: string) =>
   z.string().trim().max(limit, message).optional()
 
+const optionalEpc = z
+  .string()
+  .trim()
+  .length(24, "El EPC debe tener 24 caracteres")
+  .optional()
+
 export const keyUpsertSchema = z
   .object({
     nombre: z.string().trim().min(1, "El nombre es obligatorio").max(255, "Nombre demasiado largo"),
     descripcion: optionalString(500, "Descripción demasiado larga"),
-    rfidEpc: optionalString(128, "RFID demasiado largo"),
+    rfidEpc: optionalEpc,
     codigoActivo: optionalString(128, "Código activo demasiado largo"),
     estado: z.enum(allowedStates).default("activo"),
     propietarioId: z.number().int().positive().optional(),

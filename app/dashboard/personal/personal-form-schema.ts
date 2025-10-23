@@ -12,7 +12,7 @@ export const formSchema = z
   .object({
     nombre: z.string().trim().min(1, "Ingresa un nombre"),
     documento: preprocessOptional(z.string().trim().max(120, "Máximo 120 caracteres")),
-    rfidEpc: preprocessOptional(z.string().trim().max(128, "Máximo 128 caracteres")),
+  rfidEpc: preprocessOptional(z.string().trim().length(24, "El EPC debe tener 24 caracteres")),
     habilitado: z.boolean().default(true),
     habilitadoDesde: preprocessOptional(z.string()),
     habilitadoHasta: preprocessOptional(z.string()),

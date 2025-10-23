@@ -15,6 +15,7 @@ type Position = {
 export const CustomCursor = () => {
   const [isEnabled, setIsEnabled] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
+  const [forceSystemCursor, setForceSystemCursor] = useState(false)
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 })
 
   useEffect(() => {
@@ -26,11 +27,19 @@ export const CustomCursor = () => {
     setIsEnabled(true)
 
     const handlePointerMove = (event: PointerEvent) => {
+      const target = event.target
+      const shouldForceSystemCursor =
+        target instanceof HTMLElement && !!target.closest('[data-system-cursor]')
+
+      setForceSystemCursor(shouldForceSystemCursor)
       setPosition({ x: event.clientX, y: event.clientY })
-      setIsVisible(true)
+      setIsVisible(!shouldForceSystemCursor)
     }
 
-    const hideCursor = () => setIsVisible(false)
+    const hideCursor = () => {
+      setIsVisible(false)
+      setForceSystemCursor(false)
+    }
 
     window.addEventListener('pointermove', handlePointerMove)
     window.addEventListener('pointerleave', hideCursor)
@@ -49,7 +58,7 @@ export const CustomCursor = () => {
     const body = document.body
     if (!body) return undefined
 
-    if (isEnabled && isVisible) {
+    if (isEnabled && isVisible && !forceSystemCursor) {
       body.classList.add('custom-cursor-hidden')
     } else {
       body.classList.remove('custom-cursor-hidden')
@@ -58,9 +67,9 @@ export const CustomCursor = () => {
     return () => {
       body.classList.remove('custom-cursor-hidden')
     }
-  }, [isEnabled, isVisible])
+  }, [isEnabled, isVisible, forceSystemCursor])
 
-  if (!isEnabled) return null
+  if (!isEnabled || forceSystemCursor) return null
 
   return (
     <Cursor

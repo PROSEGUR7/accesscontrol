@@ -7,7 +7,7 @@ import { mapPerson, PERSON_COLUMNS, type PersonRow } from "./persona-utils"
 const createPersonSchema = z.object({
   nombre: z.string().trim().min(1, "El nombre es obligatorio").max(255, "El nombre es demasiado largo"),
   documento: z.string().trim().max(120, "Documento demasiado largo").optional(),
-  rfidEpc: z.string().trim().max(128, "RFID demasiado largo").optional(),
+  rfidEpc: z.string().trim().length(24, "El EPC debe tener 24 caracteres").optional(),
   habilitado: z.boolean().optional(),
   habilitadoDesde: z.union([z.string().datetime(), z.null()]).optional(),
   habilitadoHasta: z.union([z.string().datetime(), z.null()]).optional(),

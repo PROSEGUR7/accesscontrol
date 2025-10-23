@@ -403,7 +403,7 @@ export function KeysTable({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border">
+  <div className="rounded-lg border overflow-hidden">
         <DndContext
           id={instanceId}
           sensors={sensors}

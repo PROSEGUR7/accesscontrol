@@ -24,7 +24,7 @@ export const keyFormSchema = z
   .object({
     nombre: z.string().trim().min(1, "Ingresa un nombre").max(255, "Máximo 255 caracteres"),
     descripcion: preprocessOptional(z.string().trim().max(500, "Máximo 500 caracteres")),
-    rfidEpc: preprocessOptional(z.string().trim().max(128, "Máximo 128 caracteres")),
+  rfidEpc: preprocessOptional(z.string().trim().length(24, "El EPC debe tener 24 caracteres")),
     codigoActivo: preprocessOptional(z.string().trim().max(128, "Máximo 128 caracteres")),
     estado: z.enum(["activo", "baja", "extraviado"]).default("activo"),
     propietarioId: preprocessNumber(z.number().int().positive("Selecciona un propietario válido")),
