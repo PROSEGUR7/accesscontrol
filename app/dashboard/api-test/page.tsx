@@ -34,6 +34,12 @@ function formatTimestamp(value: string | null | undefined) {
 }
 
 function getSeverityVariant(event: RfidEvent) {
+  if (event.autorizado === false) {
+    return "destructive"
+  }
+  if (event.gpoResultado === "error") {
+    return "destructive"
+  }
   const severity = `${event.tipo ?? ""} ${event.motivo ?? ""}`.toLowerCase()
   return severity.includes("deneg") || severity.includes("fall") || severity.includes("error")
     ? "destructive"
@@ -49,6 +55,8 @@ type EnrichedEvent = RfidEvent & {
 
 function describeEvent(event: EnrichedEvent) {
   const pieces = [
+    typeof event.autorizado === "boolean" ? (event.autorizado ? "Autorizado" : "Denegado") : null,
+    event.gpoResultado ? `GPO: ${event.gpoResultado}` : null,
     event.personaId ? `Persona #${event.personaId}` : null,
     event.objetoId ? `Objeto #${event.objetoId}` : null,
     event.puertaId ? `Puerta #${event.puertaId}` : null,
@@ -58,7 +66,9 @@ function describeEvent(event: EnrichedEvent) {
 
   const statsLabel = `Lecturas: ${event.readCount} · Última: ${event.lastSeen ? formatTimestamp(event.lastSeen) : "—"}`
 
-  const description = [statsLabel, ...pieces].filter(Boolean).join(" · ")
+  const motives = event.decisionMotivo ? [event.decisionMotivo] : []
+
+  const description = [statsLabel, ...pieces, ...motives].filter(Boolean).join(" · ")
 
   return description || "Sin metadatos"
 }
@@ -287,6 +297,8 @@ export default function ApiTestPage() {
                   <TableHead>EPC</TableHead>
                   <TableHead>Descripción</TableHead>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Autorización</TableHead>
+                  <TableHead>GPO</TableHead>
                   <TableHead>RSSI</TableHead>
                 </TableRow>
               </TableHeader>
@@ -316,12 +328,50 @@ export default function ApiTestPage() {
                           {event.tipo ?? "N/A"}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={event.autorizado === false ? "destructive" : event.autorizado ? "outline" : "secondary"}
+                          className={cn(
+                            event.autorizado === false
+                              ? "border-red-500 bg-red-500/10 text-red-500"
+                              : event.autorizado
+                                ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
+                                : "border-muted bg-muted text-muted-foreground",
+                          )}
+                        >
+                          {event.autorizado === null
+                            ? "Pendiente"
+                            : event.autorizado
+                              ? "Permitido"
+                              : "Denegado"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={event.gpoResultado === "error" ? "destructive" : event.gpoResultado === "success" ? "outline" : "secondary"}
+                          className={cn(
+                            event.gpoResultado === "error"
+                              ? "border-red-500 bg-red-500/10 text-red-500"
+                              : event.gpoResultado === "success"
+                                ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
+                                : "border-muted bg-muted text-muted-foreground",
+                          )}
+                        >
+                          {event.gpoResultado === "success"
+                            ? "Pulso"
+                            : event.gpoResultado === "error"
+                              ? "Error"
+                              : event.gpoResultado === "skipped"
+                                ? "Omitido"
+                                : "No aplica"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{event.rssi ?? "—"}</TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={7} className="py-6 text-center text-sm text-muted-foreground">
                       {initialLoading
                         ? "Cargando historial de eventos guardados..."
                         : "Aún no hay eventos en el buffer. Envía un POST a `/api/rfid` para comenzar a recibir datos."}
@@ -361,6 +411,72 @@ export default function ApiTestPage() {
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-muted-foreground">Lecturas registradas:</span>
                   <span>{selectedEvent.readCount}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Autorización:</span>
+                  <Badge
+                    variant={selectedEvent.autorizado === false ? "destructive" : selectedEvent.autorizado ? "outline" : "secondary"}
+                    className={cn(
+                      selectedEvent.autorizado === false
+                        ? "border-red-500 bg-red-500/10 text-red-500"
+                        : selectedEvent.autorizado
+                          ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
+                          : "border-muted bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {selectedEvent.autorizado === null
+                      ? "Pendiente"
+                      : selectedEvent.autorizado
+                        ? "Permitido"
+                        : "Denegado"}
+                  </Badge>
+                  {selectedEvent.decisionMotivo ? (
+                    <span className="text-xs text-muted-foreground">{selectedEvent.decisionMotivo}</span>
+                  ) : null}
+                </div>
+                {selectedEvent.decisionNotas && selectedEvent.decisionNotas.length ? (
+                  <div className="text-xs text-muted-foreground">
+                    Notas: {selectedEvent.decisionNotas.join(" · ")}
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">GPO:</span>
+                  <Badge
+                    variant={selectedEvent.gpoResultado === "error" ? "destructive" : selectedEvent.gpoResultado === "success" ? "outline" : "secondary"}
+                    className={cn(
+                      selectedEvent.gpoResultado === "error"
+                        ? "border-red-500 bg-red-500/10 text-red-500"
+                        : selectedEvent.gpoResultado === "success"
+                          ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
+                          : "border-muted bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {selectedEvent.gpoResultado === "success"
+                      ? "Pulso"
+                      : selectedEvent.gpoResultado === "error"
+                        ? "Error"
+                        : selectedEvent.gpoResultado === "skipped"
+                          ? "Omitido"
+                          : selectedEvent.gpoIntentado
+                            ? "Sin datos"
+                            : "No aplica"}
+                  </Badge>
+                  {selectedEvent.gpoMensaje ? (
+                    <span className="text-xs text-muted-foreground">{selectedEvent.gpoMensaje}</span>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  <span>Pin: {selectedEvent.gpoPin ?? "—"}</span>
+                  <span>Modo: {selectedEvent.gpoMode ?? "—"}</span>
+                  <span>
+                    Intento: {selectedEvent.gpoIntentado === null || selectedEvent.gpoIntentado === undefined
+                      ? "—"
+                      : selectedEvent.gpoIntentado
+                        ? "Sí"
+                        : "No"}
+                  </span>
+                  <span>HTTP: {selectedEvent.gpoStatusCode ?? "—"}</span>
+                  <span>Duración: {selectedEvent.gpoDuracionMs ? `${selectedEvent.gpoDuracionMs} ms` : "—"}</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {[

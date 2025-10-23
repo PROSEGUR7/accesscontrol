@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { io, type Socket } from "socket.io-client"
+import type { AccessControlAudit } from "@/types/access-control"
 
 export type RfidEvent = {
   id: number
@@ -19,6 +20,18 @@ export type RfidEvent = {
   extra: unknown
   readCount?: number | null
   lastSeen?: string | null
+  accessControl?: AccessControlAudit | null
+  autorizado?: boolean | null
+  decisionMotivo?: string | null
+  decisionCodigos?: string[]
+  decisionNotas?: string[]
+  gpoPin?: number | null
+  gpoMode?: string | null
+  gpoResultado?: "success" | "error" | "skipped" | null
+  gpoMensaje?: string | null
+  gpoIntentado?: boolean | null
+  gpoStatusCode?: number | null
+  gpoDuracionMs?: number | null
 }
 
 type UseRfidStreamOptions = {

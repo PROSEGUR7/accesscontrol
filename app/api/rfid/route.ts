@@ -2,8 +2,10 @@ import { NextResponse, type NextRequest } from "next/server"
 import { XMLParser } from "fast-xml-parser"
 import { z } from "zod"
 
+import { evaluateAccessControl } from "@/lib/access-control"
 import { query } from "@/lib/db"
 import { getSocketServer } from "@/lib/socket"
+import type { AccessControlAudit } from "@/types/access-control"
 
 type MovementRow = {
   id: number
@@ -488,7 +490,19 @@ function normalizeTimestamp(value: string | number | undefined) {
   return date
 }
 
+function extractAccessControl(extra: unknown): AccessControlAudit | null {
+  if (!extra || typeof extra !== "object") return null
+  const container = extra as { accessControl?: unknown }
+  const candidate = container.accessControl
+  if (!candidate || typeof candidate !== "object") return null
+  return candidate as AccessControlAudit
+}
+
 function formatMovement(row: MovementRow) {
+  const accessControl = extractAccessControl(row.extra)
+  const decision = accessControl?.decision
+  const gpo = accessControl?.gpo
+
   return {
     id: Number(row.id),
     timestamp: row.ts instanceof Date ? row.ts.toISOString() : new Date(row.ts).toISOString(),
@@ -503,6 +517,18 @@ function formatMovement(row: MovementRow) {
     direccion: row.direccion,
     motivo: row.motivo,
     extra: row.extra,
+    accessControl,
+    autorizado: typeof decision?.authorized === "boolean" ? decision.authorized : null,
+    decisionMotivo: typeof decision?.reason === "string" ? decision.reason : null,
+    decisionCodigos: Array.isArray(decision?.codes) ? decision.codes : [],
+    decisionNotas: Array.isArray(decision?.notes) ? decision.notes : [],
+    gpoPin: gpo?.pin ?? accessControl?.mapping?.gpoPin ?? null,
+    gpoMode: gpo?.mode ?? accessControl?.mapping?.mode ?? null,
+    gpoResultado: gpo?.status ?? null,
+    gpoMensaje: gpo?.message ?? null,
+    gpoIntentado: typeof gpo?.attempted === "boolean" ? gpo.attempted : null,
+    gpoStatusCode: typeof gpo?.statusCode === "number" ? gpo.statusCode : null,
+    gpoDuracionMs: typeof gpo?.durationMs === "number" ? gpo.durationMs : null,
     readCount: row.read_count === null ? null : Number(row.read_count),
     lastSeen: row.last_seen instanceof Date
       ? row.last_seen.toISOString()
@@ -577,19 +603,58 @@ export async function POST(req: NextRequest) {
 
       const resolvedType = typeof tipo === "string" && tipo.trim() ? tipo.trim() : DEFAULT_EVENT_TYPE
 
+      const evaluation = await evaluateAccessControl({
+        epc,
+        personaId: persona,
+        objetoId: objeto,
+        puertaId: puerta,
+        lectorId: lector,
+        antenaId: antena,
+      })
+
+      const resolvedPersonaId = evaluation.resolvedIds.personaId ?? persona
+      const resolvedObjetoId = evaluation.resolvedIds.objetoId ?? objeto
+      const resolvedPuertaId = evaluation.resolvedIds.puertaId ?? puerta
+      const resolvedLectorId = evaluation.resolvedIds.lectorId ?? lector
+      const resolvedAntenaId = evaluation.resolvedIds.antenaId ?? antena
+
+      const payloadForAudit = {
+        epc,
+        tipo: resolvedType,
+        personaId: resolvedPersonaId,
+        objetoId: resolvedObjetoId,
+        puertaId: resolvedPuertaId,
+        lectorId: resolvedLectorId,
+        antenaId: resolvedAntenaId,
+        rssi: signal,
+        direccion: direccion ?? null,
+        motivo: motivo ?? null,
+        timestamp: ts.toISOString(),
+      }
+
+      const recordExtra = {
+        normalizedPayload: payloadForAudit,
+        rawPayload: extraPayload,
+        accessControl: evaluation.audit,
+      }
+
+      const motivoFinal = (motivo && motivo.trim().length > 0)
+        ? motivo
+        : evaluation.audit.decision.reason ?? null
+
       return insertMovement({
         ts,
         tipo: resolvedType,
         epc,
-        persona,
-        objeto,
-        puerta,
-        lector,
-        antena,
+        persona: resolvedPersonaId,
+        objeto: resolvedObjetoId,
+        puerta: resolvedPuertaId,
+        lector: resolvedLectorId,
+        antena: resolvedAntenaId,
         signal,
         direccion: direccion ?? null,
-        motivo: motivo ?? null,
-        extra: extraPayload,
+        motivo: motivoFinal,
+        extra: recordExtra,
       })
     }))
 
