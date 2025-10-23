@@ -2,9 +2,10 @@ import { NextResponse, type NextRequest } from "next/server"
 import { z } from "zod"
 
 import { query } from "@/lib/db"
+import { KEY_DEFAULT_TYPE } from "../keys/key-utils"
 import { mapPerson, PERSON_COLUMNS, type PersonRow } from "./persona-utils"
 
-const createPersonSchema = z.object({
+export const personUpsertSchema = z.object({
   nombre: z.string().trim().min(1, "El nombre es obligatorio").max(255, "El nombre es demasiado largo"),
   documento: z.string().trim().max(120, "Documento demasiado largo").optional(),
   rfidEpc: z.string().trim().length(24, "El EPC debe tener 24 caracteres").optional(),
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const result = createPersonSchema.safeParse(payload)
+  const result = personUpsertSchema.safeParse(payload)
   if (!result.success) {
     return NextResponse.json({
       error: "Datos inválidos",
@@ -78,14 +79,21 @@ export async function POST(request: NextRequest) {
 
   try {
     if (rfidEpc) {
-      const [keyConflict] = await query<{ id: number }>(
-        `SELECT id FROM objetos WHERE rfid_epc = $1 LIMIT 1`,
+      const [keyConflict] = await query<{ id: number; tipo: string }>(
+        `SELECT id, tipo FROM objetos WHERE rfid_epc = $1 LIMIT 1`,
         [rfidEpc],
       )
 
       if (keyConflict) {
+        if (keyConflict.tipo === KEY_DEFAULT_TYPE) {
+          return NextResponse.json(
+            { error: "El EPC RFID ya está asignado a una llave" },
+            { status: 409 },
+          )
+        }
+
         return NextResponse.json(
-          { error: "El EPC RFID ya está asignado a una llave" },
+          { error: "El EPC ya está asignado a otra entidad" },
           { status: 409 },
         )
       }

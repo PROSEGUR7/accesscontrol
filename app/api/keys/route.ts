@@ -127,6 +127,19 @@ export async function POST(request: NextRequest) {
       )
 
       if (personaConflict) {
+        const values = [normalized.rfidEpc, KEY_DEFAULT_TYPE]
+        const [keyConflict] = await query<{ id: number }>(
+          `SELECT id FROM objetos WHERE rfid_epc = $1 AND tipo <> $2 LIMIT 1`,
+          values,
+        )
+
+        if (keyConflict) {
+          return NextResponse.json(
+            { error: "El EPC ya está asignado a otra entidad" },
+            { status: 409 },
+          )
+        }
+
         return NextResponse.json(
           { error: "El EPC ya está asignado a una persona" },
           { status: 409 },
