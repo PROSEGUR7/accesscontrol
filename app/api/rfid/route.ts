@@ -57,7 +57,7 @@ const xmlParser = new XMLParser({
 type SimpleObject = Record<string, unknown>
 
 const FIELD_ALIASES: Record<string, string[]> = {
-  epc: ["epc", "tagid", "tagvalue", "id", "tagidhex", "tagiddec", "idhex", "ih"],
+  epc: ["epc", "tagid", "tagvalue", "tagidhex", "tagiddec", "idhex", "ih"],
   timestamp: ["timestamp", "ts", "time", "eventtime", "datetime", "created", "occuredat"],
   tipo: ["tipo", "type", "eventtype", "movementtype"],
   personaId: ["personaid", "persona_id", "personid", "person", "workerid"],
