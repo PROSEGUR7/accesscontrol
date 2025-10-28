@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { ArrowUpRight, KeyRound } from "lucide-react";
+import { ArrowUpRight, KeyRound, Search } from "lucide-react";
 
 import { KeysTable } from "@/components/keys/keys-table";
 import { Button } from "@/components/ui/button";
@@ -133,6 +133,7 @@ export default function KeysPage() {
   const [loadingReferences, setLoadingReferences] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingKey, setEditingKey] = useState<Key | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const form = useForm<KeyFormValues>({
     resolver: zodResolver(keyFormSchema),
@@ -397,6 +398,30 @@ export default function KeysPage() {
     }
   }, [closeSheet]);
 
+  const normalizedQuery = searchTerm.trim().toLowerCase();
+  const filteredKeys = useMemo(() => {
+    if (!normalizedQuery) return keys;
+
+    return keys.filter((item) => {
+      const values = [
+        item.nombre,
+        item.rfidEpc ?? "",
+        item.codigoActivo ?? "",
+        item.estado,
+        item.custodioNombre ?? "",
+        item.propietarioNombre ?? "",
+        item.ubicacionNombre ?? "",
+        item.zonaActual ?? "",
+        item.categoria ?? "",
+        item.marca ?? "",
+        item.modelo ?? "",
+        item.serial ?? "",
+      ];
+
+      return values.some((value) => value.toLowerCase().includes(normalizedQuery));
+    });
+  }, [keys, normalizedQuery]);
+
   const totalKeys = keys.length;
   const totalLabel = totalKeys === 1 ? "1 llave registrada" : `${totalKeys} llaves registradas`;
 
@@ -445,9 +470,20 @@ export default function KeysPage() {
               <CardTitle className="text-lg">Llaves registradas</CardTitle>
               <CardDescription>Gestiona las llaves usando la tabla y abre el panel para crear o editar.</CardDescription>
             </div>
-            <Button onClick={openCreateSheet} disabled={submitting} className="lg:ml-auto">
-              <ArrowUpRight className="mr-2 size-4" /> Registrar llave
-            </Button>
+            <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
+              <div className="relative w-full max-w-sm lg:ml-auto">
+                <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+                <Input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Buscar por nombre, EPC, custodio..."
+                  className="pl-9"
+                />
+              </div>
+              <Button onClick={openCreateSheet} disabled={submitting}>
+                <ArrowUpRight className="mr-2 size-4" /> Registrar llave
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {loading ? (
@@ -478,11 +514,15 @@ export default function KeysPage() {
                   </Button>
                 </EmptyContent>
               </Empty>
+            ) : filteredKeys.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                No encontramos llaves que coincidan con “{searchTerm.trim()}”.
+              </div>
             ) : (
               <KeysTable
-                data={keys}
+                data={filteredKeys}
                 loading={loading}
-                onReorder={handleReorder}
+                onReorder={normalizedQuery ? undefined : handleReorder}
                 onView={handleView}
                 onEdit={handleEdit}
                 onDelete={handleDelete}

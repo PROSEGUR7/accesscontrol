@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { CirclePlus, Users } from "lucide-react";
+import { CirclePlus, Search, Users } from "lucide-react";
 
 import { PersonalTable } from "@/components/personal/personal-table";
 import { Button } from "@/components/ui/button";
@@ -92,6 +92,7 @@ export default function PersonalPage() {
 	const [processingId, setProcessingId] = useState<number | null>(null);
 	const [isSheetOpen, setIsSheetOpen] = useState(false);
 	const [editingPerson, setEditingPerson] = useState<Person | null>(null);
+	const [searchTerm, setSearchTerm] = useState("");
 
 	const form = useForm<FormSchema>({
 		resolver: zodResolver(formSchema),
@@ -287,6 +288,22 @@ export default function PersonalPage() {
 		}
 	}, [closeSheet]);
 
+	const normalizedQuery = searchTerm.trim().toLowerCase();
+	const filteredPeople = useMemo(() => {
+		if (!normalizedQuery) return people;
+
+		return people.filter((person) => {
+			const values = [
+				person.nombre,
+				person.documento ?? "",
+				person.rfidEpc ?? "",
+				person.habilitado ? "habilitado" : "suspendido",
+			];
+
+			return values.some((value) => value.toLowerCase().includes(normalizedQuery));
+		});
+	}, [people, normalizedQuery]);
+
 	const totalPeople = people.length;
 	const totalLabel = totalPeople === 1 ? "1 persona registrada" : `${totalPeople} personas registradas`;
 
@@ -342,13 +359,24 @@ export default function PersonalPage() {
 
 				<Card className="border-border/60">
 					<CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-						<div className="space-y-1">
+									<div className="space-y-1">
 							<CardTitle className="text-lg">Personal registrado</CardTitle>
 							<CardDescription>Gestiona el personal y abre el panel para crear o actualizar registros.</CardDescription>
 						</div>
-						<Button onClick={openCreateSheet} disabled={submitting} className="lg:ml-auto">
-							<CirclePlus className="mr-2 size-4" /> Registrar persona
-						</Button>
+									<div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
+										<div className="relative w-full max-w-sm lg:ml-auto">
+											<Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+											<Input
+												value={searchTerm}
+												onChange={(event) => setSearchTerm(event.target.value)}
+												placeholder="Buscar por nombre, documento o EPC"
+												className="pl-9"
+											/>
+										</div>
+										<Button onClick={openCreateSheet} disabled={submitting}>
+											<CirclePlus className="mr-2 size-4" /> Registrar persona
+										</Button>
+									</div>
 					</CardHeader>
 					<CardContent className="space-y-4">
 						{loading ? (
@@ -364,7 +392,7 @@ export default function PersonalPage() {
 								<Skeleton className="h-12 w-full" />
 								<Skeleton className="h-12 w-full" />
 							</div>
-						) : people.length === 0 ? (
+									) : people.length === 0 ? (
 							<Empty className="border border-dashed">
 								<EmptyHeader>
 									<EmptyMedia variant="icon">
@@ -379,11 +407,15 @@ export default function PersonalPage() {
 									</Button>
 								</EmptyContent>
 							</Empty>
+									) : filteredPeople.length === 0 ? (
+										<div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+											No encontramos personas que coincidan con “{searchTerm.trim()}”.
+										</div>
 						) : (
 							<PersonalTable
-								data={people}
+											data={filteredPeople}
 								loading={loading}
-								onReorder={handleReorder}
+											onReorder={normalizedQuery ? undefined : handleReorder}
 								onView={handleView}
 								onEdit={handleEdit}
 								onDelete={handleDelete}

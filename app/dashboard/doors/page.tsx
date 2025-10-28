@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { CirclePlus, DoorClosed } from "lucide-react"
+import { CirclePlus, DoorClosed, Search } from "lucide-react"
 
 import { DoorTable } from "@/components/doors/door-table"
 import { Button } from "@/components/ui/button"
@@ -69,6 +69,7 @@ export default function DoorsPage() {
   const [processingId, setProcessingId] = useState<number | null>(null)
   const [editingDoor, setEditingDoor] = useState<Door | null>(null)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
 
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -238,6 +239,23 @@ export default function DoorsPage() {
     }
   }, [closeSheet])
 
+  const normalizedQuery = searchTerm.trim().toLowerCase()
+  const filteredDoors = useMemo(() => {
+    if (!normalizedQuery) return doors
+
+    return doors.filter((door) => {
+      const values = [
+        door.nombre,
+        door.descripcion ?? "",
+        door.ubicacion ?? "",
+        door.estado ?? "",
+        door.ultimoEvento ?? "",
+      ]
+
+      return values.some((value) => value.toLowerCase().includes(normalizedQuery))
+    })
+  }, [doors, normalizedQuery])
+
   const totalDoors = doors.length
   const activeCount = useMemo(() => doors.filter((door) => door.activa).length, [doors])
   const inactiveCount = totalDoors - activeCount
@@ -285,9 +303,20 @@ export default function DoorsPage() {
               <CardTitle className="text-lg">Monitoreo de puertas</CardTitle>
               <CardDescription>Consulta y gestiona la información de cada puerta.</CardDescription>
             </div>
-            <Button onClick={openCreateSheet} disabled={submitting} className="lg:ml-auto">
-              <CirclePlus className="mr-2 size-4" /> Registrar puerta
-            </Button>
+            <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
+              <div className="relative w-full max-w-sm lg:ml-auto">
+                <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
+                <Input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Buscar por nombre, ubicación o estado"
+                  className="pl-9"
+                />
+              </div>
+              <Button onClick={openCreateSheet} disabled={submitting} className="lg:mr-0">
+                <CirclePlus className="mr-2 size-4" /> Registrar puerta
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {loading ? (
@@ -307,10 +336,14 @@ export default function DoorsPage() {
                   </Button>
                 </EmptyContent>
               </Empty>
+            ) : filteredDoors.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                No encontramos puertas que coincidan con “{searchTerm.trim()}”.
+              </div>
             ) : (
               <DoorTable
-                data={doors}
-                onReorder={handleReorder}
+                data={filteredDoors}
+                onReorder={normalizedQuery ? undefined : handleReorder}
                 onView={handleView}
                 onEdit={openEditSheet}
                 onDelete={handleDelete}

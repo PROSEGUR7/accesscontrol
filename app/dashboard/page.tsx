@@ -24,6 +24,18 @@ type ActivityItem = {
   variant: "outline" | "destructive"
 }
 
+type MovementRow = {
+  id: number
+  timestamp: string
+  tipo: string | null
+  epc: string | null
+  direccion: string | null
+  motivo: string | null
+  persona: string | null
+  objeto: string | null
+  puerta: string | null
+}
+
 type DashboardMetricsResponse = {
   stats: {
     accessesToday: { value: number; trend: number | null }
@@ -41,53 +53,30 @@ const chartConfig = {
   },
 }
 
-const fallbackActivity: ActivityItem[] = [
-  {
-    id: "fallback-1",
-    title: "Juan Pérez",
-    subtitle: "Puerta Principal",
-    time: "Hace 2 minutos",
-    badgeLabel: "Acceso concedido",
-    variant: "outline" as const,
-  },
-  {
-    id: "fallback-2",
-    title: "María García",
-    subtitle: "Laboratorio A",
-    time: "Hace 5 minutos",
-  badgeLabel: "Acceso concedido",
-  variant: "outline" as const,
-  },
-  {
-    id: "fallback-3",
-    title: "Carlos López",
-    subtitle: "Sala de Servidores",
-    time: "Hace 8 minutos",
-    badgeLabel: "Acceso denegado",
-    variant: "destructive" as const,
-  },
-  {
-    id: "fallback-4",
-    title: "Ana Martínez",
-    subtitle: "Oficina 201",
-    time: "Hace 12 minutos",
-  badgeLabel: "Acceso concedido",
-  variant: "outline" as const,
-  },
-  {
-    id: "fallback-5",
-    title: "Pedro Sánchez",
-    subtitle: "Almacén",
-    time: "Hace 15 minutos",
-  badgeLabel: "Acceso concedido",
-  variant: "outline" as const,
-  },
-]
+function ActivitySkeleton() {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="flex items-center justify-between gap-4">
+          <div className="w-full space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-56" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+          <Skeleton className="h-6 w-28 rounded-full" />
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetricsResponse | null>(null)
   const [metricsError, setMetricsError] = useState<string | null>(null)
   const [loadingMetrics, setLoadingMetrics] = useState(true)
+  const [history, setHistory] = useState<MovementRow[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(true)
+  const [historyError, setHistoryError] = useState<string | null>(null)
   const { events, connected, error } = useRfidStream({ bufferSize: 25 })
 
   useEffect(() => {
@@ -205,6 +194,79 @@ export default function DashboardPage() {
     ]
   }, [metrics])
 
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadHistory() {
+      try {
+        setLoadingHistory(true)
+        setHistoryError(null)
+
+        const response = await fetch("/api/reports/list?type=todos&limit=15", {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        })
+
+        const raw = await response.text()
+        const payload = raw ? (JSON.parse(raw) as { data?: MovementRow[]; message?: string }) : {}
+
+        if (!response.ok) {
+          throw new Error(payload.message || "No se pudieron cargar los eventos recientes.")
+        }
+
+        setHistory(payload.data ?? [])
+      } catch (fetchError) {
+        if ((fetchError as Error).name === "AbortError") return
+        console.error("Error loading recent movements", fetchError)
+        setHistory([])
+        setHistoryError((fetchError as Error).message)
+      } finally {
+        setLoadingHistory(false)
+      }
+    }
+
+    void loadHistory()
+
+    return () => {
+      controller.abort()
+    }
+  }, [])
+
+  const historyItems: ActivityItem[] = useMemo(() => {
+    return history.map((row) => {
+      const title = row.persona ?? row.objeto ?? row.epc ?? `Movimiento #${row.id}`
+
+      const subtitleParts = [
+        row.puerta ? `Puerta ${row.puerta}` : null,
+        row.direccion ? `Dirección ${row.direccion}` : null,
+      ].filter(Boolean)
+
+      const subtitle = subtitleParts.join(" · ") || "Ubicación no disponible"
+
+      const timestamp = new Date(row.timestamp)
+      const timeLabel = Number.isNaN(timestamp.getTime())
+        ? row.timestamp
+        : timestamp.toLocaleString("es-ES")
+
+      const statusSource = `${row.tipo ?? "Movimiento"}${row.motivo ? ` · ${row.motivo}` : ""}`
+      const statusLabel = statusSource.trim() || "Movimiento registrado"
+
+      const severitySource = `${row.tipo ?? ""} ${row.motivo ?? ""}`.toLowerCase()
+      const isDestructive =
+        severitySource.includes("deneg") || severitySource.includes("fall") || severitySource.includes("error")
+
+      return {
+        id: `movement-${row.id}`,
+        title,
+        subtitle,
+        time: timeLabel,
+        badgeLabel: statusLabel,
+        variant: isDestructive ? "destructive" : "outline",
+      }
+    })
+  }, [history])
+
   const activityItems: ActivityItem[] = events.length
     ? events.map((event) => {
         const descriptorParts = [
@@ -238,7 +300,17 @@ export default function DashboardPage() {
           variant: isDestructive ? "destructive" : "outline",
         }
       })
-    : fallbackActivity
+    : historyItems
+
+  const activityLoading = !events.length && loadingHistory
+  const activityError = !events.length ? historyError : null
+  const activityDescription = events.length
+    ? "Lecturas en tiempo real desde los lectores FX9600"
+    : activityLoading
+      ? "Consultando los últimos movimientos registrados"
+      : historyItems.length
+        ? "Últimos eventos guardados en la base de datos"
+        : "No hay eventos registrados"
 
   return (
     <div className="space-y-4">
@@ -327,9 +399,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Actividad Reciente</CardTitle>
-                <CardDescription>
-                  {events.length ? "Lecturas en tiempo real desde los lectores FX9600" : "Últimos eventos registrados"}
-                </CardDescription>
+                <CardDescription>{activityDescription}</CardDescription>
               </div>
               <Badge
                 variant={connected ? "outline" : "destructive"}
@@ -343,27 +413,48 @@ export default function DashboardPage() {
               </Badge>
             </div>
             {error ? <p className="text-xs text-red-500">{error}</p> : null}
+            {activityError ? <p className="text-xs text-red-500">{activityError}</p> : null}
           </CardHeader>
           <CardContent className="space-y-4">
-            {activityItems.map((event) => (
-              <div key={event.id} className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{event.title}</p>
-                  <p className="text-xs text-muted-foreground">{event.subtitle}</p>
-                  <p className="text-xs text-muted-foreground">{event.time}</p>
-                </div>
-                <Badge
-                  variant={event.variant === "destructive" ? "destructive" : "outline"}
-                  className={
-                    event.variant === "destructive"
-                      ? "border-red-500 bg-red-500/10 text-red-500"
-                      : "border-emerald-500 bg-emerald-500/10 text-emerald-600"
-                  }
-                >
-                  {event.badgeLabel}
-                </Badge>
+            {activityLoading ? (
+              <ActivitySkeleton />
+            ) : activityItems.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                No se han registrado movimientos en los últimos días.
               </div>
-            ))}
+            ) : (
+              activityItems.map((event) => (
+                <div key={event.id} className="rounded-lg border border-border/60 bg-card/40 p-3">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0 space-y-0.5">
+                        <p className="truncate text-sm font-semibold text-foreground" title={event.title}>
+                          {event.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground" title={event.subtitle}>
+                          {event.subtitle}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                        {event.time}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        variant={event.variant === "destructive" ? "destructive" : "outline"}
+                        className={`${
+                          event.variant === "destructive"
+                            ? "border-red-500 bg-red-500/10 text-red-600"
+                            : "border-emerald-500 bg-emerald-500/10 text-emerald-600"
+                        } max-w-full whitespace-normal px-2 py-1 text-left text-xs leading-relaxed`}
+                      >
+                        {event.badgeLabel}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>

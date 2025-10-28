@@ -57,11 +57,6 @@ const fallbackData = {
       url: "/dashboard/reports",
       icon: FileBarChart,
     },
-    {
-      title: "API Test",
-      url: "/dashboard/api-test",
-      icon: Activity,
-    },
   ],
 }
 
