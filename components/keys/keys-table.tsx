@@ -403,7 +403,7 @@ export function KeysTable({
 
   return (
     <div className="space-y-4">
-  <div className="rounded-lg border overflow-hidden">
+      <div className="rounded-lg border">
         <DndContext
           id={instanceId}
           sensors={sensors}
@@ -411,26 +411,28 @@ export function KeysTable({
           modifiers={[restrictToVerticalAxis]}
           onDragEnd={handleDragEnd}
         >
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur supports-backdrop-blur:bg-muted/60">
-              {table.getHeaderGroups().map((headerGroup: HeaderGroup<Key>) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header: Header<Key, unknown>) => (
-                    <TableHead key={header.id} colSpan={header.colSpan} className="whitespace-nowrap">
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody className="**:data-[slot=table-cell]:first:w-8">
-              <SortableContext items={dataIds} strategy={verticalListSortingStrategy}>
-                {table.getRowModel().rows.map((row: Row<Key>) => (
-                  <DraggableRow key={row.id} row={row} />
+          <div className="overflow-x-auto rounded-lg">
+            <Table className="min-w-[960px]">
+              <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur supports-[backdrop-filter]:bg-muted/60">
+                {table.getHeaderGroups().map((headerGroup: HeaderGroup<Key>) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header: Header<Key, unknown>) => (
+                      <TableHead key={header.id} colSpan={header.colSpan} className="whitespace-nowrap">
+                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
+                    ))}
+                  </TableRow>
                 ))}
-              </SortableContext>
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody className="[&_td:first-child]:w-8">
+                <SortableContext items={dataIds} strategy={verticalListSortingStrategy}>
+                  {table.getRowModel().rows.map((row: Row<Key>) => (
+                    <DraggableRow key={row.id} row={row} />
+                  ))}
+                </SortableContext>
+              </TableBody>
+            </Table>
+          </div>
         </DndContext>
       </div>
 
