@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 
 import { query } from "@/lib/db"
 import { keyUpsertSchema } from "../route"
-import { KEY_COLUMNS, KEY_DEFAULT_TYPE, mapKey, normalizeKeyPayload, type KeyRow } from "../key-utils"
+import { KEY_COLUMNS, mapKey, normalizeKeyPayload, type KeyRow } from "../key-utils"
 
 function getTypeFilters() {
   const raw = process.env.KEY_TYPES
@@ -63,14 +63,14 @@ export async function DELETE(_request: Request, { params }: Params) {
 
     const [row] = rows
     if (!row) {
-      return NextResponse.json({ error: "La llave no existe" }, { status: 404 })
+      return NextResponse.json({ error: "El objeto no existe" }, { status: 404 })
     }
 
-    return NextResponse.json({ llave: mapKey(row) })
+    return NextResponse.json({ objeto: mapKey(row) })
   } catch (error) {
     return NextResponse.json(
       {
-        error: "No se pudo eliminar la llave",
+        error: "No se pudo eliminar el objeto",
         details: (error as Error).message,
       },
       { status: 500 }
@@ -117,13 +117,13 @@ export async function PATCH(request: Request, { params }: Params) {
       )
 
       if (personaConflict) {
-        const values = [normalized.rfidEpc, KEY_DEFAULT_TYPE]
-        const [keyConflict] = await query<{ id: number }>(
+        const values = [normalized.rfidEpc, normalized.tipo]
+        const [objectConflict] = await query<{ id: number }>(
           `SELECT id FROM objetos WHERE rfid_epc = $1 AND tipo <> $2 LIMIT 1`,
           values,
         )
 
-        if (keyConflict) {
+        if (objectConflict) {
           return NextResponse.json(
             { error: "El EPC ya está asignado a otra entidad" },
             { status: 409 },
@@ -177,7 +177,7 @@ export async function PATCH(request: Request, { params }: Params) {
     const paramsBase = [
       objectId,
       normalized.nombre,
-      KEY_DEFAULT_TYPE,
+      normalized.tipo,
       normalized.descripcion,
       normalized.rfidEpc,
       normalized.estado,
@@ -202,10 +202,10 @@ export async function PATCH(request: Request, { params }: Params) {
 
     const [row] = rows
     if (!row) {
-      return NextResponse.json({ error: "La llave no existe" }, { status: 404 })
+      return NextResponse.json({ error: "El objeto no existe" }, { status: 404 })
     }
 
-    return NextResponse.json({ llave: mapKey(row) })
+    return NextResponse.json({ objeto: mapKey(row) })
   } catch (error) {
     const pgError = error as { code?: string }
 
@@ -218,7 +218,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
     return NextResponse.json(
       {
-        error: "No se pudo actualizar la llave",
+        error: "No se pudo actualizar el objeto",
         details: (error as Error).message,
       },
       { status: 500 }

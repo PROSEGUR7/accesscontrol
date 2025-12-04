@@ -31,6 +31,7 @@ const optionalEpc = z
 export const keyUpsertSchema = z
   .object({
     nombre: z.string().trim().min(1, "El nombre es obligatorio").max(255, "Nombre demasiado largo"),
+    tipo: z.string().trim().min(1, "El tipo es obligatorio").max(120, "Tipo demasiado largo").default(KEY_DEFAULT_TYPE),
     descripcion: optionalString(500, "Descripción demasiado larga"),
     rfidEpc: optionalEpc,
     codigoActivo: optionalString(128, "Código activo demasiado largo"),
@@ -81,13 +82,13 @@ export async function GET() {
          ORDER BY o.created_at DESC`
       )
 
-    const llaves = rows.map(mapKey)
+    const objetos = rows.map(mapKey)
 
-    return NextResponse.json({ llaves })
+    return NextResponse.json({ objetos })
   } catch (error) {
     return NextResponse.json(
       {
-        error: "No se pudieron obtener las llaves registradas",
+        error: "No se pudieron obtener los objetos registrados",
         details: (error as Error).message,
       },
       { status: 500 }
@@ -127,13 +128,13 @@ export async function POST(request: NextRequest) {
       )
 
       if (personaConflict) {
-        const values = [normalized.rfidEpc, KEY_DEFAULT_TYPE]
-        const [keyConflict] = await query<{ id: number }>(
+        const values = [normalized.rfidEpc, normalized.tipo]
+        const [objectConflict] = await query<{ id: number }>(
           `SELECT id FROM objetos WHERE rfid_epc = $1 AND tipo <> $2 LIMIT 1`,
           values,
         )
 
-        if (keyConflict) {
+        if (objectConflict) {
           return NextResponse.json(
             { error: "El EPC ya está asignado a otra entidad" },
             { status: 409 },
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
       RETURNING id`,
       [
         normalized.nombre,
-        KEY_DEFAULT_TYPE,
+        normalized.tipo,
         normalized.descripcion,
         normalized.rfidEpc,
         normalized.estado,
@@ -195,7 +196,7 @@ export async function POST(request: NextRequest) {
 
     const insertedRow = inserted[0]
     if (!insertedRow) {
-      throw new Error("No se pudo registrar la llave")
+      throw new Error("No se pudo registrar el objeto")
     }
 
     const [row] = await query<KeyRow>(
@@ -209,10 +210,10 @@ export async function POST(request: NextRequest) {
     )
 
     if (!row) {
-      throw new Error("No se pudo recuperar la llave recién creada")
+      throw new Error("No se pudo recuperar el objeto recién creado")
     }
 
-    return NextResponse.json({ llave: mapKey(row) }, { status: 201 })
+    return NextResponse.json({ objeto: mapKey(row) }, { status: 201 })
   } catch (error) {
     const pgError = error as { code?: string }
 
@@ -225,7 +226,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: "No se pudo registrar la llave",
+        error: "No se pudo registrar el objeto",
         details: (error as Error).message,
       },
       { status: 500 }

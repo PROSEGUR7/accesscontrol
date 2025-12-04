@@ -42,7 +42,15 @@ const breadcrumbMap: Record<string, BreadcrumbMeta[]> = {
   ],
   '/dashboard/keys': [
     { label: 'Inicio', href: '/dashboard' },
-    { label: 'Llaves RFID' },
+    { label: 'Objetos' },
+  ],
+  '/dashboard/ubicaciones': [
+    { label: 'Inicio', href: '/dashboard' },
+    { label: 'Ubicaciones' },
+  ],
+  '/dashboard/movimientos': [
+    { label: 'Inicio', href: '/dashboard' },
+    { label: 'Movimientos' },
   ],
   '/dashboard/personal': [
     { label: 'Inicio', href: '/dashboard' },

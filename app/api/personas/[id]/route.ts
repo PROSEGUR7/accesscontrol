@@ -98,7 +98,7 @@ export async function PATCH(request: Request, { params }: Params) {
       if (keyConflict) {
         if (keyConflict.tipo === KEY_DEFAULT_TYPE) {
           return NextResponse.json(
-            { error: "El EPC RFID ya está asignado a una llave" },
+            { error: "El EPC RFID ya está asignado a un objeto" },
             { status: 409 },
           )
         }

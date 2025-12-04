@@ -1,6 +1,6 @@
 "use client"
 
-import { Activity, Building2, DoorClosed, FileBarChart, KeySquare, LayoutDashboard, MapPin, Users } from "lucide-react"
+import { Activity, ArrowLeftRight, Building2, DoorClosed, FileBarChart, KeySquare, LayoutDashboard, MapPin, Users } from "lucide-react"
 import type { ComponentProps } from "react"
 
 import { NavMain } from "@/components/nav-main"
@@ -43,9 +43,19 @@ const fallbackData = {
       icon: DoorClosed,
     },
     {
-      title: "Llaves RFID",
+      title: "Ubicaciones",
+      url: "/dashboard/ubicaciones",
+      icon: MapPin,
+    },
+    {
+      title: "Objetos",
       url: "/dashboard/keys",
       icon: KeySquare,
+    },
+    {
+      title: "Movimientos",
+      url: "/dashboard/movimientos",
+      icon: ArrowLeftRight,
     },
     {
       title: "Personal",

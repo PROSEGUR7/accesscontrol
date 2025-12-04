@@ -59,16 +59,16 @@ import type { Person } from "@/types/person";
 import { keyFormSchema, type KeyFormValues } from "./key-form-schema";
 
 const estadoOptions = [
-  { value: "activo" as const, label: "Activa" },
-  { value: "extraviado" as const, label: "Extraviada" },
+  { value: "activo" as const, label: "Activo" },
+  { value: "extraviado" as const, label: "Extraviado" },
   { value: "baja" as const, label: "En baja" },
-];
+]
 
 const estadoLabels: Record<Key["estado"], string> = {
-  activo: "Activa",
-  extraviado: "Extraviada",
+  activo: "Activo",
+  extraviado: "Extraviado",
   baja: "En baja",
-};
+}
 
 const UNASSIGNED_VALUE = "__none__";
 
@@ -79,6 +79,7 @@ type ReferenceData = {
 
 const defaultKeyValues: KeyFormValues = {
   nombre: "",
+  tipo: "objeto",
   descripcion: undefined,
   rfidEpc: undefined,
   codigoActivo: undefined,
@@ -100,6 +101,7 @@ const defaultKeyValues: KeyFormValues = {
 function keyToFormValues(key: Key): KeyFormValues {
   return {
     nombre: key.nombre,
+    tipo: key.tipo,
     descripcion: key.descripcion ?? undefined,
     rfidEpc: key.rfidEpc ?? undefined,
     codigoActivo: key.codigoActivo ?? undefined,
@@ -146,13 +148,13 @@ export default function KeysPage() {
       if (!response.ok) {
         throw new Error("Respuesta no válida del servidor");
       }
-      const data = (await response.json()) as { llaves?: Key[] };
-      setKeys(data.llaves ?? []);
+      const data = (await response.json()) as { objetos?: Key[] };
+      setKeys(data.objetos ?? []);
     } catch (error) {
-      console.error("Error al cargar llaves", error);
+      console.error("Error al cargar objetos", error);
       toast({
         variant: "destructive",
-        title: "No se pudieron cargar las llaves",
+        title: "No se pudieron cargar los objetos",
         description: "Revisa la conexión o intenta nuevamente.",
       });
     } finally {
@@ -230,6 +232,7 @@ export default function KeysPage() {
 
   const handleView = useCallback((item: Key) => {
     const details = [
+      `Tipo: ${item.tipo}`,
       item.codigoActivo ? `Código: ${item.codigoActivo}` : null,
       item.rfidEpc ? `EPC: ${item.rfidEpc}` : null,
       `Estado: ${estadoLabels[item.estado]}`,
@@ -257,7 +260,7 @@ export default function KeysPage() {
 
     const confirmed = typeof window === "undefined"
       ? true
-      : window.confirm(`Eliminar la llave "${item.nombre}"?`);
+      : window.confirm(`Eliminar el objeto "${item.nombre}"?`);
 
     if (!confirmed) return;
 
@@ -265,19 +268,19 @@ export default function KeysPage() {
     try {
       const response = await fetch(`/api/keys/${item.id}`, { method: "DELETE" });
       const raw = await response.text();
-      const parsed = raw ? (JSON.parse(raw) as { llave?: Key; error?: string }) : {};
-      if (!response.ok || !parsed.llave) {
-        throw new Error(parsed.error ?? "No se pudo eliminar la llave");
+      const parsed = raw ? (JSON.parse(raw) as { objeto?: Key; error?: string }) : {};
+      if (!response.ok || !parsed.objeto) {
+        throw new Error(parsed.error ?? "No se pudo eliminar el objeto");
       }
 
       setKeys((current) => current.filter((key) => key.id !== item.id));
 
       toast({
-        title: "Llave eliminada",
-        description: `${item.nombre} fue eliminada correctamente`,
+        title: "Objeto eliminado",
+        description: `${item.nombre} fue eliminado correctamente`,
       });
     } catch (error) {
-      console.error("Error al eliminar llave", error);
+      console.error("Error al eliminar objeto", error);
       toast({
         variant: "destructive",
         title: "No se pudo eliminar",
@@ -293,6 +296,7 @@ export default function KeysPage() {
     try {
       const payload: Record<string, unknown> = {
         nombre: values.nombre.trim(),
+        tipo: values.tipo.trim(),
         estado: values.estado,
       };
 
@@ -357,28 +361,28 @@ export default function KeysPage() {
       });
 
       const raw = await response.text();
-      const parsed = raw ? (JSON.parse(raw) as { llave?: Key; error?: string }) : {};
-      const llave = parsed.llave;
+      const parsed = raw ? (JSON.parse(raw) as { objeto?: Key; error?: string }) : {};
+      const objeto = parsed.objeto;
 
-      if (!response.ok || !llave) {
-        throw new Error(parsed.error ?? (isEditing ? "No se pudo actualizar la llave" : "No se pudo registrar la llave"));
+      if (!response.ok || !objeto) {
+        throw new Error(parsed.error ?? (isEditing ? "No se pudo actualizar el objeto" : "No se pudo registrar el objeto"));
       }
 
       setKeys((current) => {
         if (isEditing) {
-          return current.map((item) => (item.id === llave.id ? llave : item));
+          return current.map((item) => (item.id === objeto.id ? objeto : item));
         }
-        return [llave, ...current];
+        return [objeto, ...current];
       });
 
       toast({
-        title: isEditing ? "Llave actualizada" : "Llave registrada",
-        description: `${llave.nombre} se guardó correctamente`,
+        title: isEditing ? "Objeto actualizado" : "Objeto registrado",
+        description: `${objeto.nombre} se guardó correctamente`,
       });
 
       closeSheet();
     } catch (error) {
-      console.error("Error al guardar llave", error);
+      console.error("Error al guardar objeto", error);
       toast({
         variant: "destructive",
         title: "No se pudo guardar",
@@ -398,7 +402,7 @@ export default function KeysPage() {
   }, [closeSheet]);
 
   const totalKeys = keys.length;
-  const totalLabel = totalKeys === 1 ? "1 llave registrada" : `${totalKeys} llaves registradas`;
+  const totalLabel = totalKeys === 1 ? "1 objeto registrado" : `${totalKeys} objetos registrados`;
 
   const statusSummary = useMemo(() => {
     return keys.reduce(
@@ -410,10 +414,10 @@ export default function KeysPage() {
     );
   }, [keys]);
 
-  const sheetTitle = editingKey ? "Editar llave" : "Registrar llave";
+  const sheetTitle = editingKey ? "Editar objeto" : "Registrar objeto";
   const sheetDescription = editingKey
-    ? "Actualiza la información de la llave seleccionada."
-    : "Completa los detalles para registrar una nueva llave.";
+    ? "Actualiza la información del objeto seleccionado."
+    : "Completa los detalles para registrar un nuevo objeto.";
 
   return (
     <>
@@ -421,7 +425,7 @@ export default function KeysPage() {
         <Card className="border-border/60">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <KeyRound className="size-5" /> Inventario de llaves
+              <KeyRound className="size-5" /> Inventario de objetos
             </CardTitle>
             <CardDescription>{totalLabel}</CardDescription>
           </CardHeader>
@@ -442,11 +446,11 @@ export default function KeysPage() {
         <Card className="border-border/60">
           <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-1">
-              <CardTitle className="text-lg">Llaves registradas</CardTitle>
-              <CardDescription>Gestiona las llaves usando la tabla y abre el panel para crear o editar.</CardDescription>
+              <CardTitle className="text-lg">Objetos registrados</CardTitle>
+              <CardDescription>Gestiona los objetos usando la tabla y abre el panel para crear o editar.</CardDescription>
             </div>
             <Button onClick={openCreateSheet} disabled={submitting} className="lg:ml-auto">
-              <ArrowUpRight className="mr-2 size-4" /> Registrar llave
+              <ArrowUpRight className="mr-2 size-4" /> Registrar objeto
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -469,12 +473,12 @@ export default function KeysPage() {
                   <EmptyMedia variant="icon">
                     <KeyRound className="size-5" />
                   </EmptyMedia>
-                  <EmptyTitle>No hay llaves registradas</EmptyTitle>
-                  <EmptyDescription>Registra la primera llave para comenzar a controlar el inventario.</EmptyDescription>
+                  <EmptyTitle>No hay objetos registrados</EmptyTitle>
+                  <EmptyDescription>Registra el primer objeto para comenzar a controlar el inventario.</EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
                   <Button onClick={openCreateSheet} variant="outline">
-                    Registrar llave
+                    Registrar objeto
                   </Button>
                 </EmptyContent>
               </Empty>
@@ -512,7 +516,21 @@ export default function KeysPage() {
                       <FormItem>
                         <FormLabel>Nombre</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ej. Llave principal" {...field} value={field.value ?? ""} />
+                          <Input placeholder="Ej. Objeto principal" {...field} value={field.value ?? ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="tipo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ej. Herramienta, Equipo" {...field} value={field.value ?? ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -569,7 +587,7 @@ export default function KeysPage() {
                           <FormControl>
                             <Input type="date" {...field} value={field.value ?? ""} />
                           </FormControl>
-                          <FormDescription>Opcional, registra cuándo se creó la llave.</FormDescription>
+                          <FormDescription>Opcional, registra cuándo se incorporó el objeto.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -633,7 +651,7 @@ export default function KeysPage() {
                               </SelectContent>
                             </Select>
                           </FormControl>
-                          <FormDescription>Opcional, asigna la llave a un responsable.</FormDescription>
+                          <FormDescription>Opcional, asigna el objeto a un responsable.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -664,7 +682,7 @@ export default function KeysPage() {
                               </SelectContent>
                             </Select>
                           </FormControl>
-                          <FormDescription>Opcional, indica quién custodia la llave.</FormDescription>
+                          <FormDescription>Opcional, indica quién custodia el objeto.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -848,7 +866,7 @@ export default function KeysPage() {
                         <Spinner className="mr-2 size-4" /> Guardando...
                       </>
                     ) : (
-                      editingKey ? "Guardar cambios" : "Registrar llave"
+                      editingKey ? "Guardar cambios" : "Registrar objeto"
                     )}
                   </Button>
                 </div>

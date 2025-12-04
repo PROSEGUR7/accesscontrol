@@ -2,7 +2,6 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 
-import { CustomCursor } from "@/components/custom-cursor"
 import { Toaster } from "@/components/ui/toaster"
 import { cn } from "@/lib/utils"
 
@@ -39,7 +38,6 @@ export default function RootLayout({
         className={cn(geistSans.variable, geistMono.variable, "font-sans antialiased")}
         suppressHydrationWarning
       >
-        <CustomCursor />
           {children}
           <Toaster />
       </body>

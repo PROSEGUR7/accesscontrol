@@ -23,6 +23,7 @@ const preprocessNumber = (schema: z.ZodNumber) =>
 export const keyFormSchema = z
   .object({
     nombre: z.string().trim().min(1, "Ingresa un nombre").max(255, "Máximo 255 caracteres"),
+    tipo: z.string().trim().min(1, "Ingresa un tipo").max(120, "Máximo 120 caracteres"),
     descripcion: preprocessOptional(z.string().trim().max(500, "Máximo 500 caracteres")),
   rfidEpc: preprocessOptional(z.string().trim().length(24, "El EPC debe tener 24 caracteres")),
     codigoActivo: preprocessOptional(z.string().trim().max(128, "Máximo 128 caracteres")),

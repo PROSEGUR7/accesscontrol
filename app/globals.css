@@ -134,15 +134,3 @@
   }
 }
 
-@media (pointer: coarse) {
-  body.custom-cursor-hidden {
-    cursor: auto;
-  }
-}
-
-@media (pointer: fine) {
-  body.custom-cursor-hidden,
-  body.custom-cursor-hidden * {
-    cursor: none !important;
-  }
-}

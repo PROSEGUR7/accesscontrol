@@ -2,7 +2,7 @@ import type { Key } from "@/types/key"
 
 const envDefaultType = process.env.KEY_DEFAULT_TYPE?.trim()
 
-export const KEY_DEFAULT_TYPE = envDefaultType && envDefaultType.length > 0 ? envDefaultType : "llave"
+export const KEY_DEFAULT_TYPE = envDefaultType && envDefaultType.length > 0 ? envDefaultType : "objeto"
 
 export const KEY_COLUMNS = `o.id,
   o.nombre,
@@ -124,6 +124,7 @@ function toNullableDate(value: MaybeDateInput) {
 
 export type KeyPayloadInput = {
   nombre: string
+  tipo?: MaybeString
   descripcion?: MaybeString
   rfidEpc?: MaybeString
   codigoActivo?: MaybeString
@@ -144,6 +145,7 @@ export type KeyPayloadInput = {
 
 export type NormalizedKeyPayload = {
   nombre: string
+  tipo: string
   descripcion: string | null
   rfidEpc: string | null
   codigoActivo: string | null
@@ -163,8 +165,12 @@ export type NormalizedKeyPayload = {
 }
 
 export function normalizeKeyPayload(input: KeyPayloadInput): NormalizedKeyPayload {
+  const rawTipo = input.tipo ?? KEY_DEFAULT_TYPE
+  const tipo = toNullableString(rawTipo) ?? KEY_DEFAULT_TYPE
+
   return {
     nombre: input.nombre.trim(),
+    tipo,
     descripcion: toNullableString(input.descripcion ?? null),
     rfidEpc: toNullableString(input.rfidEpc ?? null),
     codigoActivo: toNullableString(input.codigoActivo ?? null),

@@ -256,12 +256,17 @@ export function KeysTable({
       accessorKey: "nombre",
       header: () => (
         <div className="flex items-center gap-1 font-medium">
-          <ArrowDownAZ className="size-3" /> Llave
+          <ArrowDownAZ className="size-3" /> Objeto
         </div>
       ),
       cell: ({ row }: { row: Row<Key> }) => (
-        <div className="flex flex-col">
-          <span className="font-medium text-foreground">{row.original.nombre}</span>
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-foreground">{row.original.nombre}</span>
+            <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+              {row.original.tipo}
+            </Badge>
+          </div>
           <span className="text-muted-foreground text-xs">ID #{row.original.id}</span>
         </div>
       ),
@@ -289,10 +294,10 @@ export function KeysTable({
       cell: ({ row }: { row: Row<Key> }) => (
         <Badge variant="outline" className={estadoStyles[row.original.estado]}>
           {row.original.estado === "activo"
-            ? "Activa"
+            ? "Activo"
             : row.original.estado === "baja"
               ? "En baja"
-              : "Extraviada"}
+              : "Extraviado"}
         </Badge>
       ),
     },
@@ -395,7 +400,7 @@ export function KeysTable({
 
   if (!tableData.length) {
     return (
-      <div className="text-muted-foreground text-sm">No hay llaves registradas.</div>
+      <div className="text-muted-foreground text-sm">No hay objetos registrados.</div>
     )
   }
 
