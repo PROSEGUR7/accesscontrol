@@ -372,7 +372,7 @@ export function PersonalTable({
 
   return (
     <div className="space-y-4">
-  <div className="rounded-lg border overflow-hidden">
+      <div className="overflow-x-auto rounded-lg border">
         <DndContext
           id={instanceId}
           sensors={sensors}
