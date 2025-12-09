@@ -42,11 +42,30 @@ if (process.env.NODE_ENV !== "production" && pool) {
   globalForPool.__rfidDbPool = pool
 }
 
-export async function query<T extends QueryResultRow = QueryResultRow>(text: string, params?: any[]) {
+export async function query<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params?: any[],
+  schema?: string,
+) {
   if (!connectionString || !pool) {
     throw new Error("DATABASE_URL environment variable is not set")
   }
 
-  const { rows } = await pool.query<T>(text, params)
-  return rows
+  if (!schema) {
+    const { rows } = await pool.query<T>(text, params)
+    return rows
+  }
+
+  if (!isSafeIdentifier(schema)) {
+    throw new Error("Invalid schema name")
+  }
+
+  const client = await pool.connect()
+  try {
+    await client.query(`SET LOCAL search_path TO ${schema}, public`)
+    const { rows } = await client.query<T>(text, params)
+    return rows
+  } finally {
+    client.release()
+  }
 }
