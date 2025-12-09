@@ -27,6 +27,25 @@ type AdminUser = {
 
 export async function POST(request: Request) {
   try {
+    const expectedTenant = process.env.PG_SCHEMA
+    const tenantHeader = request.headers.get("x-tenant")?.trim()
+
+    if (expectedTenant) {
+      if (!tenantHeader) {
+        return NextResponse.json(
+          { message: "Tenant no especificado" },
+          { status: 400 },
+        )
+      }
+
+      if (tenantHeader !== expectedTenant) {
+        return NextResponse.json(
+          { message: "Tenant incorrecto" },
+          { status: 403 },
+        )
+      }
+    }
+
     const body = await request.json()
     const { email, password } = loginSchema.parse(body)
 
