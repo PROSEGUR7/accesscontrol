@@ -61,6 +61,18 @@ export async function POST(request: Request) {
       ]),
     )
 
+    // Si no hay lista explícita, descubrir esquemas que siguen el patrón tenant_*
+    if (schemaOrder.length === 0) {
+      const discovered = await query<{ schema_name: string }>(
+        `select schema_name from information_schema.schemata where schema_name like 'tenant_%'`,
+      )
+      for (const row of discovered) {
+        if (row.schema_name && isSafeIdentifier(row.schema_name)) {
+          schemaOrder.push(row.schema_name)
+        }
+      }
+    }
+
     let user: AdminUser | null = null
     let schemaUsed: string | null = null
 
