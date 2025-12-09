@@ -25,6 +25,10 @@ type AdminUser = {
   intentos_fallidos: number
 }
 
+function isSafeIdentifier(input: string) {
+  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(input)
+}
+
 export async function POST(request: Request) {
   try {
     const expectedTenant = process.env.PG_SCHEMA
@@ -43,13 +47,37 @@ export async function POST(request: Request) {
 
     const normalizedEmail = email.trim().toLowerCase()
 
-    const [user] = await query<AdminUser>(
-      `SELECT id, nombre, email, username, password_hash, roles, activo, bloqueado_hasta, intentos_fallidos
-       FROM tenant_base.admin_users
-       WHERE lower(email) = lower($1)
-       LIMIT 1`,
-      [normalizedEmail],
-    )
+    const candidateSchemasEnv = process.env.PG_TENANT_SCHEMAS
+    const candidateSchemas = (candidateSchemasEnv ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .filter(isSafeIdentifier)
+
+    const schemaOrder = expectedTenant ? [expectedTenant] : candidateSchemas
+
+    let user: AdminUser | null = null
+    let schemaUsed: string | null = null
+
+    if (schemaOrder.length === 0) {
+      return NextResponse.json({ message: "No hay tenants configurados" }, { status: 500 })
+    }
+
+    for (const schema of schemaOrder) {
+      const [found] = await query<AdminUser>(
+        `SELECT id, nombre, email, username, password_hash, roles, activo, bloqueado_hasta, intentos_fallidos
+         FROM ${schema}.admin_users
+         WHERE lower(email) = lower($1)
+         LIMIT 1`,
+        [normalizedEmail],
+      )
+
+      if (found) {
+        user = found
+        schemaUsed = schema
+        break
+      }
+    }
 
     if (!user) {
       return NextResponse.json({ message: "Credenciales inválidas" }, { status: 401 })
@@ -85,6 +113,7 @@ export async function POST(request: Request) {
         sub: user.id,
         nombre: user.nombre,
         roles: user.roles ?? [],
+        tenant: schemaUsed,
       },
       secret,
       { expiresIn: "1d" },
@@ -97,6 +126,7 @@ export async function POST(request: Request) {
         nombre: user.nombre,
         email: user.email,
         roles: user.roles ?? [],
+        tenant: schemaUsed,
       },
     })
 
