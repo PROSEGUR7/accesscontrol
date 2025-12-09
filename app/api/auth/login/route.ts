@@ -30,20 +30,12 @@ export async function POST(request: Request) {
     const expectedTenant = process.env.PG_SCHEMA
     const tenantHeader = request.headers.get("x-tenant")?.trim()
 
-    if (expectedTenant) {
-      if (!tenantHeader) {
-        return NextResponse.json(
-          { message: "Tenant no especificado" },
-          { status: 400 },
-        )
-      }
-
-      if (tenantHeader !== expectedTenant) {
-        return NextResponse.json(
-          { message: "Tenant incorrecto" },
-          { status: 403 },
-        )
-      }
+    // Si hay cabecera de tenant, debe coincidir; si no, se usa el tenant activo (PG_SCHEMA)
+    if (expectedTenant && tenantHeader && tenantHeader !== expectedTenant) {
+      return NextResponse.json(
+        { message: "Tenant incorrecto" },
+        { status: 403 },
+      )
     }
 
     const body = await request.json()
