@@ -21,8 +21,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const login = async ({ email, password }: { email: string; password: string }) => {
     setIsLoading(true)
     try {
       const response = await fetch("/api/auth/login", {
@@ -62,6 +61,54 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
     }
   }
 
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    await login({ email, password })
+  }
+
+  const handleAccessKeyLogin = async () => {
+    if (isLoading) return
+    if (typeof window === "undefined") return
+
+    const nav = navigator as Navigator & { credentials?: CredentialsContainer }
+    if (!nav.credentials?.get) {
+      toast({
+        title: "Llave de acceso no disponible",
+        description: "Tu navegador no soporta inicio con llave. Usa tu contraseña.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const credential = (await nav.credentials.get({ password: true } as CredentialRequestOptions)) as
+        | (PasswordCredential & { id: string; password?: string })
+        | null
+
+      const passwordCredential = credential && "id" in credential ? credential : null
+
+      if (!passwordCredential?.id || !passwordCredential.password) {
+        toast({
+          title: "No se pudo usar la llave",
+          description: "Selecciona una credencial guardada o usa tu contraseña.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      setEmail(passwordCredential.id)
+      setPassword(passwordCredential.password)
+      await login({ email: passwordCredential.id, password: passwordCredential.password })
+    } catch (error) {
+      console.error("Access key login error", error)
+      toast({
+        title: "No se pudo iniciar con llave",
+        description: "Intenta de nuevo o usa tu contraseña.",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="border-border/40 bg-card/70 backdrop-blur-md">
@@ -77,6 +124,8 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
                 <Input
                   id="email"
                   type="email"
+                  name="email"
+                  autoComplete="username"
                   placeholder="m@example.com"
                   required
                   value={email}
@@ -90,6 +139,8 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
                 <Input
                   id="password"
                   type="password"
+                  name="password"
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
@@ -99,7 +150,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
                 <Button type="submit" disabled={isLoading}>
                   {isLoading ? "Ingresando..." : "Iniciar sesión"}
                 </Button>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" onClick={handleAccessKeyLogin} disabled={isLoading}>
                   Iniciar con llave de acceso
                 </Button>
                 <FieldDescription className="text-center">
