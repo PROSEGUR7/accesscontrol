@@ -291,16 +291,16 @@ export default function ApiTestPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="overflow-x-auto rounded-lg border border-border/60">
-              <Table className="min-w-[900px]">
+              <Table className="min-w-[1040px] text-sm">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Hora</TableHead>
-                    <TableHead>EPC</TableHead>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Autorización</TableHead>
-                    <TableHead>GPO</TableHead>
-                    <TableHead>RSSI</TableHead>
+                    <TableHead className="whitespace-nowrap">Hora</TableHead>
+                    <TableHead className="whitespace-nowrap">EPC</TableHead>
+                    <TableHead className="whitespace-nowrap">Descripción</TableHead>
+                    <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                    <TableHead className="whitespace-nowrap">Autorización</TableHead>
+                    <TableHead className="whitespace-nowrap">GPO</TableHead>
+                    <TableHead className="whitespace-nowrap">RSSI</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -312,10 +312,10 @@ export default function ApiTestPage() {
                         data-state={index === selectedIndex ? "selected" : undefined}
                         className="cursor-pointer"
                       >
-                        <TableCell>{event.formattedTimestamp}</TableCell>
-                        <TableCell className="font-mono text-xs">{event.epc ?? "—"}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {describeEvent(event)}
+                        <TableCell className="whitespace-nowrap">{event.formattedTimestamp}</TableCell>
+                        <TableCell className="font-mono text-[11px] whitespace-nowrap">{event.epc ?? "—"}</TableCell>
+                        <TableCell className="max-w-[260px] text-xs text-muted-foreground">
+                          <span className="line-clamp-2">{describeEvent(event)}</span>
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -324,7 +324,7 @@ export default function ApiTestPage() {
                               event.severity === "destructive"
                                 ? "border-red-500 bg-red-500/10 text-red-500"
                                 : "border-emerald-500 bg-emerald-500/10 text-emerald-600",
-                            )}
+                            , "whitespace-nowrap")}
                           >
                             {event.tipo ?? "N/A"}
                           </Badge>
@@ -338,7 +338,7 @@ export default function ApiTestPage() {
                                 : event.autorizado
                                   ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
                                   : "border-muted bg-muted text-muted-foreground",
-                            )}
+                            , "whitespace-nowrap")}
                           >
                             {event.autorizado === null
                               ? "Pendiente"
@@ -356,7 +356,7 @@ export default function ApiTestPage() {
                                 : event.gpoResultado === "success"
                                   ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
                                   : "border-muted bg-muted text-muted-foreground",
-                            )}
+                            , "whitespace-nowrap")}
                           >
                             {event.gpoResultado === "success"
                               ? "Pulso"
@@ -367,7 +367,7 @@ export default function ApiTestPage() {
                                   : "No aplica"}
                           </Badge>
                         </TableCell>
-                        <TableCell>{event.rssi ?? "—"}</TableCell>
+                        <TableCell className="whitespace-nowrap">{event.rssi ?? "—"}</TableCell>
                       </TableRow>
                     ))
                   ) : (
