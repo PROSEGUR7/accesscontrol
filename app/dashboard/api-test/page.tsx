@@ -290,99 +290,101 @@ export default function ApiTestPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Hora</TableHead>
-                  <TableHead>EPC</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Autorización</TableHead>
-                  <TableHead>GPO</TableHead>
-                  <TableHead>RSSI</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {formattedEvents.length ? (
-                  formattedEvents.map((event, index) => (
-                    <TableRow
-                      key={`event-${event.id}-${event.timestamp}`}
-                      onClick={() => setSelectedIndex(index)}
-                      data-state={index === selectedIndex ? "selected" : undefined}
-                      className="cursor-pointer"
-                    >
-                      <TableCell>{event.formattedTimestamp}</TableCell>
-                      <TableCell className="font-mono text-xs">{event.epc ?? "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {describeEvent(event)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={event.severity === "destructive" ? "destructive" : "outline"}
-                          className={cn(
-                            event.severity === "destructive"
-                              ? "border-red-500 bg-red-500/10 text-red-500"
-                              : "border-emerald-500 bg-emerald-500/10 text-emerald-600",
-                          )}
-                        >
-                          {event.tipo ?? "N/A"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={event.autorizado === false ? "destructive" : event.autorizado ? "outline" : "secondary"}
-                          className={cn(
-                            event.autorizado === false
-                              ? "border-red-500 bg-red-500/10 text-red-500"
-                              : event.autorizado
-                                ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
-                                : "border-muted bg-muted text-muted-foreground",
-                          )}
-                        >
-                          {event.autorizado === null
-                            ? "Pendiente"
-                            : event.autorizado
-                              ? "Permitido"
-                              : "Denegado"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={event.gpoResultado === "error" ? "destructive" : event.gpoResultado === "success" ? "outline" : "secondary"}
-                          className={cn(
-                            event.gpoResultado === "error"
-                              ? "border-red-500 bg-red-500/10 text-red-500"
-                              : event.gpoResultado === "success"
-                                ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
-                                : "border-muted bg-muted text-muted-foreground",
-                          )}
-                        >
-                          {event.gpoResultado === "success"
-                            ? "Pulso"
-                            : event.gpoResultado === "error"
-                              ? "Error"
-                              : event.gpoResultado === "skipped"
-                                ? "Omitido"
-                                : "No aplica"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{event.rssi ?? "—"}</TableCell>
-                    </TableRow>
-                  ))
-                ) : (
+            <div className="overflow-x-auto rounded-lg border border-border/60">
+              <Table className="min-w-[900px]">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="py-6 text-center text-sm text-muted-foreground">
-                      {initialLoading
-                        ? "Cargando historial de eventos guardados..."
-                        : "Aún no hay eventos en el buffer. Envía un POST a `/api/rfid` para comenzar a recibir datos."}
-                    </TableCell>
+                    <TableHead>Hora</TableHead>
+                    <TableHead>EPC</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Autorización</TableHead>
+                    <TableHead>GPO</TableHead>
+                    <TableHead>RSSI</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-              <TableCaption>
-                Mostrando hasta 100 eventos más recientes recibidos por el endpoint `/api/rfid`.
-              </TableCaption>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {formattedEvents.length ? (
+                    formattedEvents.map((event, index) => (
+                      <TableRow
+                        key={`event-${event.id}-${event.timestamp}`}
+                        onClick={() => setSelectedIndex(index)}
+                        data-state={index === selectedIndex ? "selected" : undefined}
+                        className="cursor-pointer"
+                      >
+                        <TableCell>{event.formattedTimestamp}</TableCell>
+                        <TableCell className="font-mono text-xs">{event.epc ?? "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {describeEvent(event)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={event.severity === "destructive" ? "destructive" : "outline"}
+                            className={cn(
+                              event.severity === "destructive"
+                                ? "border-red-500 bg-red-500/10 text-red-500"
+                                : "border-emerald-500 bg-emerald-500/10 text-emerald-600",
+                            )}
+                          >
+                            {event.tipo ?? "N/A"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={event.autorizado === false ? "destructive" : event.autorizado ? "outline" : "secondary"}
+                            className={cn(
+                              event.autorizado === false
+                                ? "border-red-500 bg-red-500/10 text-red-500"
+                                : event.autorizado
+                                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
+                                  : "border-muted bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {event.autorizado === null
+                              ? "Pendiente"
+                              : event.autorizado
+                                ? "Permitido"
+                                : "Denegado"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={event.gpoResultado === "error" ? "destructive" : event.gpoResultado === "success" ? "outline" : "secondary"}
+                            className={cn(
+                              event.gpoResultado === "error"
+                                ? "border-red-500 bg-red-500/10 text-red-500"
+                                : event.gpoResultado === "success"
+                                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
+                                  : "border-muted bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {event.gpoResultado === "success"
+                              ? "Pulso"
+                              : event.gpoResultado === "error"
+                                ? "Error"
+                                : event.gpoResultado === "skipped"
+                                  ? "Omitido"
+                                  : "No aplica"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{event.rssi ?? "—"}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-6 text-center text-sm text-muted-foreground">
+                        {initialLoading
+                          ? "Cargando historial de eventos guardados..."
+                          : "Aún no hay eventos en el buffer. Envía un POST a `/api/rfid` para comenzar a recibir datos."}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+                <TableCaption>
+                  Mostrando hasta 100 eventos más recientes recibidos por el endpoint `/api/rfid`.
+                </TableCaption>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 

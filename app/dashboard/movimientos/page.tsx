@@ -359,12 +359,6 @@ export default function MovimientosPage() {
     resetForm()
   }, [resetForm])
 
-  const openCreateSheet = useCallback(() => {
-    setEditingMovement(null)
-    form.reset(createDefaultValues())
-    setIsSheetOpen(true)
-  }, [form])
-
   const openEditSheet = useCallback((movement: Movement) => {
     setEditingMovement(movement)
     form.reset(movementToFormValues(movement))
@@ -648,9 +642,6 @@ export default function MovimientosPage() {
               >
                 <Download className="mr-2 size-4" /> Exportar CSV
               </Button>
-              <Button onClick={openCreateSheet} disabled={submitting}>
-                Registrar movimiento
-              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -661,6 +652,7 @@ export default function MovimientosPage() {
                   <Input
                     placeholder="EPC, persona, objeto"
                     value={searchInput}
+                    maxLength={24}
                     onChange={(event) => setSearchInput(event.target.value)}
                   />
                 </div>
@@ -719,8 +711,8 @@ export default function MovimientosPage() {
                   <EmptyTitle>No hay movimientos registrados</EmptyTitle>
                   <EmptyDescription>Registra un movimiento manual o espera nuevos eventos del lector.</EmptyDescription>
                 </EmptyHeader>
-                <EmptyContent>
-                  <Button onClick={openCreateSheet}>Registrar movimiento</Button>
+                <EmptyContent className="text-sm text-muted-foreground">
+                  Espera lecturas nuevas o revisa la conexión del lector para recibir eventos.
                 </EmptyContent>
               </Empty>
             ) : (

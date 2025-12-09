@@ -193,7 +193,7 @@ export default async function ReportsPage() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-lg border">
-            <Table className="min-w-[900px]">
+            <Table className="min-w-[1040px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>ID</TableHead>
@@ -216,17 +216,19 @@ export default async function ReportsPage() {
                 ) : (
                   recent.map((row) => (
                     <TableRow key={row.id}>
-                      <TableCell className="font-medium">#{row.id}</TableCell>
-                      <TableCell>{formatDateTime(row.ts)}</TableCell>
-                      <TableCell className="font-mono text-xs">{row.epc ?? "—"}</TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">#{row.id}</TableCell>
+                      <TableCell className="whitespace-nowrap">{formatDateTime(row.ts)}</TableCell>
+                      <TableCell className="font-mono text-xs whitespace-nowrap">{row.epc ?? "—"}</TableCell>
                       <TableCell>{row.persona ?? "—"}</TableCell>
                       <TableCell>{row.objeto ?? "—"}</TableCell>
                       <TableCell>{row.puerta ?? "—"}</TableCell>
-                      <TableCell className="max-w-[240px] text-sm text-muted-foreground">
-                        {row.tipo ?? "Movimiento"}
-                        {row.motivo ? ` · ${row.motivo}` : null}
+                      <TableCell className="max-w-[280px] whitespace-nowrap text-sm text-muted-foreground">
+                        <span className="line-clamp-1">
+                          {row.tipo ?? "Movimiento"}
+                          {row.motivo ? ` · ${row.motivo}` : null}
+                        </span>
                       </TableCell>
-                      <TableCell>{statusBadge(row.authorized)}</TableCell>
+                      <TableCell className="whitespace-nowrap">{statusBadge(row.authorized)}</TableCell>
                     </TableRow>
                   ))
                 )}
