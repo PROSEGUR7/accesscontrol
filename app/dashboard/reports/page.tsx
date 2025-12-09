@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { query } from "@/lib/db"
+import { getSessionFromCookies } from "@/lib/auth"
 
 export const revalidate = 0
 
@@ -26,6 +27,14 @@ type RecentRow = {
 }
 
 async function getReportsData() {
+  const session = await getSessionFromCookies()
+
+  if (!session?.tenant) {
+    throw new Error("No se pudo determinar el tenant para los reportes")
+  }
+
+  const tenant = session.tenant
+
   const [daily, recent] = await Promise.all([
     query<DailyRow>(
       `WITH daily AS (
@@ -48,7 +57,9 @@ async function getReportsData() {
               denied,
               GREATEST(total - authorized - denied, 0)::int AS pending
          FROM daily
-        ORDER BY day DESC`
+        ORDER BY day DESC`,
+      undefined,
+      tenant,
     ),
     query<RecentRow>(
       `SELECT m.id,
@@ -65,7 +76,9 @@ async function getReportsData() {
          LEFT JOIN objetos obj ON obj.id = m.objeto_id
          LEFT JOIN puertas door ON door.id = m.puerta_id
         ORDER BY m.ts DESC
-        LIMIT 12`
+        LIMIT 12`,
+      undefined,
+      tenant,
     ),
   ])
 

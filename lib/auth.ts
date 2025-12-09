@@ -12,6 +12,7 @@ export type SessionPayload = {
   nombre?: string
   roles?: string[]
   tenant?: string
+  email?: string
 }
 
 type AdminUserRow = {
@@ -50,12 +51,14 @@ export function verifySessionToken(token?: string | null): SessionPayload | null
       : undefined
 
     const tenant = typeof decoded.tenant === "string" ? decoded.tenant : undefined
+    const email = typeof decoded.email === "string" ? decoded.email : undefined
 
     return {
       sub: numericSub,
       nombre,
       roles,
       tenant,
+      email,
     }
   } catch (error) {
     console.warn("Token de sesión inválido", error)

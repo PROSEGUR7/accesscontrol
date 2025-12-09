@@ -62,9 +62,21 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
 
   const client = await pool.connect()
   try {
+    await client.query("BEGIN")
     await client.query(`SET LOCAL search_path TO ${schema}, public`)
     const { rows } = await client.query<T>(text, params)
+    await client.query("COMMIT")
     return rows
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK")
+    } catch (rollbackError) {
+      const message = rollbackError instanceof Error ? rollbackError.message : String(rollbackError)
+      if (!/no (?:active )?transaction/i.test(message)) {
+        console.error("Failed to rollback tenant query", rollbackError)
+      }
+    }
+    throw error
   } finally {
     client.release()
   }

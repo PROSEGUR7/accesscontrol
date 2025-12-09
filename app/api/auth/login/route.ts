@@ -129,6 +129,7 @@ export async function POST(request: Request) {
         nombre: user.nombre,
         roles: user.roles ?? [],
         tenant: schemaUsed,
+        email: user.email,
       },
       secret,
       { expiresIn: "1d" },
