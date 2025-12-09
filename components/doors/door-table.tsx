@@ -77,7 +77,6 @@ type DoorTableProps = {
   data: Door[]
   loading?: boolean
   onReorder?: (next: Door[]) => void
-    <div className="overflow-x-auto rounded-lg border">
   onEdit?: (door: Door) => void
   onDelete?: (door: Door) => Promise<void> | void
   formatDate: (value: string) => string

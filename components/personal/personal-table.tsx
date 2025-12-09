@@ -196,7 +196,6 @@ export function PersonalTable({
   const [tableData, setTableData] = useState<Person[]>(data)
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  <div className="overflow-x-auto rounded-lg border">
   const [pendingOrder, setPendingOrder] = useState<Person[] | null>(null)
 
   useEffect(() => {
