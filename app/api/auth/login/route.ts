@@ -54,7 +54,12 @@ export async function POST(request: Request) {
       .filter(Boolean)
       .filter(isSafeIdentifier)
 
-    const schemaOrder = expectedTenant ? [expectedTenant] : candidateSchemas
+    const schemaOrder = Array.from(
+      new Set([
+        ...(expectedTenant && isSafeIdentifier(expectedTenant) ? [expectedTenant] : []),
+        ...candidateSchemas,
+      ]),
+    )
 
     let user: AdminUser | null = null
     let schemaUsed: string | null = null
