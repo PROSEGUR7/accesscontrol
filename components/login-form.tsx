@@ -104,7 +104,7 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
                   Iniciar con llave de acceso
                 </Button>
                 <FieldDescription className="text-center">
-                  ¿No tienes una cuenta? <Link href="/registro">Regístrate</Link>
+                  Acceso únicamente para cuentas existentes. Solicita altas al administrador.
                 </FieldDescription>
               </Field>
             </FieldGroup>

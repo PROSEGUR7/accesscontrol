@@ -196,6 +196,7 @@ export function PersonalTable({
   const [tableData, setTableData] = useState<Person[]>(data)
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [pendingOrder, setPendingOrder] = useState<Person[] | null>(null)
 
   useEffect(() => {
@@ -320,7 +321,7 @@ export function PersonalTable({
       columnVisibility,
       rowSelection,
     },
-  getRowId: (row: Person) => row.id.toString(),
+    getRowId: (row: Person) => row.id.toString(),
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,

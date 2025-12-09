@@ -300,20 +300,22 @@ export default function DashboardPage() {
                 <Skeleton className="h-56 w-full" />
               </div>
             ) : chartData.length > 0 ? (
-              <ChartContainer config={chartConfig} className="h-64" key="accesses-chart">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                  <XAxis dataKey="name" stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--muted-foreground)" tickLine={false} axisLine={false} width={32} />
-                  <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent hideLabel />} />
-                  <Bar
-                    dataKey="accesos"
-                    radius={[8, 8, 4, 4]}
-                    fill="var(--primary)"
-                    isAnimationActive={false}
-                  />
-                </BarChart>
-              </ChartContainer>
+              <div className="overflow-x-auto">
+                <ChartContainer config={chartConfig} className="h-64 min-w-[360px] aspect-auto" key="accesses-chart">
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                    <XAxis dataKey="name" stroke="var(--muted-foreground)" tickLine={false} axisLine={false} />
+                    <YAxis stroke="var(--muted-foreground)" tickLine={false} axisLine={false} width={32} />
+                    <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent hideLabel />} />
+                    <Bar
+                      dataKey="accesos"
+                      radius={[8, 8, 4, 4]}
+                      fill="var(--primary)"
+                      isAnimationActive={false}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </div>
             ) : (
               <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-border/60 text-sm text-muted-foreground">
                 Aún no hay lecturas registradas en los últimos días.
