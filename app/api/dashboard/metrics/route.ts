@@ -29,7 +29,12 @@ export async function GET(request: NextRequest) {
          (SELECT count(*) FROM personas WHERE habilitado = true) AS active_personnel,
          (SELECT count(*) FROM puertas) AS monitored_doors,
          (SELECT count(*) FROM movimientos WHERE date(ts) = current_date) AS accesses_today,
-         (SELECT count(*) FROM movimientos WHERE date(ts) = current_date AND autorizado = false) AS denied_today
+         (SELECT count(*)
+            FROM movimientos
+           WHERE date(ts) = current_date
+             AND COALESCE((extra->'accessControl'->'decision'->>'authorized')::boolean, false) = false
+             AND (extra->'accessControl'->'decision'->>'authorized') IS NOT NULL
+         ) AS denied_today
        `,
       [],
       tenant,
@@ -49,7 +54,7 @@ export async function GET(request: NextRequest) {
       `SELECT m.id,
               COALESCE(per.nombre, 'Desconocido') AS persona,
               COALESCE(door.nombre, 'Desconocido') AS puerta,
-              m.autorizado,
+              (m.extra->'accessControl'->'decision'->>'authorized')::boolean AS autorizado,
               m.ts AS timestamp
        FROM movimientos m
        LEFT JOIN personas per ON per.id = m.persona_id
