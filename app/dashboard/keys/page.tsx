@@ -602,7 +602,15 @@ export default function KeysPage() {
                         <FormItem>
                           <FormLabel>Etiqueta RFID (EPC)</FormLabel>
                           <FormControl>
-                            <Input placeholder="Ej. 9000..." maxLength={24} {...field} value={field.value ?? ""} />
+                            <Input
+                              placeholder="Ej. 9000..."
+                              maxLength={24}
+                              value={field.value ?? ""}
+                              onChange={(event) => {
+                                const value = event.target.value.slice(0, 24).toUpperCase()
+                                field.onChange(value)
+                              }}
+                            />
                           </FormControl>
                           <FormDescription>Debe ser única y contener 24 caracteres.</FormDescription>
                           <FormMessage />

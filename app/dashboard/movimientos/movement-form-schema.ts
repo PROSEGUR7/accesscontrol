@@ -5,7 +5,7 @@ const optionalId = z.number().int().positive().optional().nullable()
 export const movementFormSchema = z.object({
   timestamp: z.string().trim().min(1, "La marca de tiempo es obligatoria"),
   tipo: z.string().trim().max(120, "Tipo demasiado largo").optional().nullable(),
-  epc: z.string().trim().min(4, "El EPC es obligatorio").max(128, "EPC demasiado largo"),
+  epc: z.string().trim().min(4, "El EPC es obligatorio").max(24, "El EPC debe tener 24 caracteres o menos"),
   personaId: optionalId,
   objetoId: optionalId,
   puertaId: optionalId,

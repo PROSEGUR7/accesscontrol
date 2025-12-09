@@ -408,7 +408,7 @@ export function KeysTable({
 
   return (
     <div className="space-y-4">
-  <div className="rounded-lg border overflow-hidden">
+  <div className="overflow-x-auto rounded-lg border">
         <DndContext
           id={instanceId}
           sensors={sensors}
@@ -416,7 +416,7 @@ export function KeysTable({
           modifiers={[restrictToVerticalAxis]}
           onDragEnd={handleDragEnd}
         >
-          <Table>
+          <Table className="min-w-[960px]">
             <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur supports-backdrop-blur:bg-muted/60">
               {table.getHeaderGroups().map((headerGroup: HeaderGroup<Key>) => (
                 <TableRow key={headerGroup.id}>

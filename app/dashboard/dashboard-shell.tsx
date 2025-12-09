@@ -74,13 +74,13 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
   const breadcrumbs = breadcrumbMap[pathname] ?? defaultBreadcrumb
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <AppSidebar user={user} />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
+        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 bg-background/95 px-3 shadow-sm backdrop-blur transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 sm:h-16 sm:px-4">
+          <div className="flex flex-1 flex-wrap items-center gap-2">
             <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+            <Separator orientation="vertical" className="mr-2 hidden h-5 data-[orientation=vertical]:h-4 sm:block" />
             <Breadcrumb>
               <BreadcrumbList>
                 {breadcrumbs.map((crumb: BreadcrumbMeta, index: number) => {
@@ -105,7 +105,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
             </Breadcrumb>
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>
+        <div className="flex flex-1 flex-col gap-4 p-3 pt-0 sm:p-4">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   )

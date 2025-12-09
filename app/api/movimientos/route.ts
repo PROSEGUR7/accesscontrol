@@ -51,7 +51,7 @@ function parseDateParam(value: string | null, mode: "start" | "end") {
 export const movementUpsertSchema = z.object({
   timestamp: timestampSchema,
   tipo: optionalString(120, "Tipo demasiado largo"),
-  epc: z.string().trim().min(4, "El EPC es obligatorio").max(128, "EPC demasiado largo"),
+  epc: z.string().trim().min(4, "El EPC es obligatorio").max(24, "El EPC debe tener 24 caracteres o menos"),
   personaId: idField.optional(),
   objetoId: idField.optional(),
   puertaId: idField.optional(),

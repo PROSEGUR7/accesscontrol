@@ -136,8 +136,8 @@ export function MovementsTable({ data, loading, onView, onEdit, onDelete, format
   }
 
   return (
-    <div className="rounded-lg border">
-      <Table>
+    <div className="overflow-x-auto rounded-lg border">
+      <Table className="min-w-[720px]">
         <TableHeader>
           <TableRow>
             <TableHead>Evento</TableHead>

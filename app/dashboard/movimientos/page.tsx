@@ -809,7 +809,15 @@ export default function MovimientosPage() {
                     <FormItem>
                       <FormLabel>RFID EPC</FormLabel>
                       <FormControl>
-                        <Input placeholder="300833B2DDD9..." maxLength={128} {...field} />
+                        <Input
+                          placeholder="300833B2DDD9..."
+                          maxLength={24}
+                          value={field.value ?? ""}
+                          onChange={(event) => {
+                            const value = event.target.value.slice(0, 24).toUpperCase()
+                            field.onChange(value)
+                          }}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
