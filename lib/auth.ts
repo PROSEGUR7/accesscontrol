@@ -11,6 +11,7 @@ export type SessionPayload = {
   sub: number
   nombre?: string
   roles?: string[]
+  tenant?: string
 }
 
 type AdminUserRow = {
@@ -48,10 +49,13 @@ export function verifySessionToken(token?: string | null): SessionPayload | null
       ? decoded.roles.filter((role): role is string => typeof role === "string")
       : undefined
 
+    const tenant = typeof decoded.tenant === "string" ? decoded.tenant : undefined
+
     return {
       sub: numericSub,
       nombre,
       roles,
+      tenant,
     }
   } catch (error) {
     console.warn("Token de sesión inválido", error)
@@ -70,11 +74,12 @@ export function getSessionFromRequest(request: NextRequest) {
   return verifySessionToken(token)
 }
 
-export async function getAuthenticatedUserById(userId: number): Promise<AuthenticatedUser | null> {
+export async function getAuthenticatedUserById(userId: number, tenant?: string): Promise<AuthenticatedUser | null> {
   try {
     const [user] = await query<AdminUserRow>(
-      `SELECT id, nombre, email, roles FROM tenant_base.admin_users WHERE id = $1 LIMIT 1`,
+      `SELECT id, nombre, email, roles FROM admin_users WHERE id = $1 LIMIT 1`,
       [userId],
+      tenant,
     )
 
     if (!user) return null

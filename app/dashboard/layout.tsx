@@ -12,7 +12,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     redirect('/')
   }
 
-  const user = await getAuthenticatedUserById(session.sub)
+  const user = await getAuthenticatedUserById(session.sub, session.tenant)
 
   if (!user) {
     redirect('/')
@@ -24,6 +24,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         name: user.nombre,
         email: user.email,
         roles: user.roles,
+        tenant: session.tenant,
       }}
     >
       {children}

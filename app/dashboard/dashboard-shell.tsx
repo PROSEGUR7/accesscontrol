@@ -25,6 +25,7 @@ type DashboardShellUser = {
   email: string
   avatar?: string
   roles?: string[]
+  tenant?: string
 }
 
 const breadcrumbMap: Record<string, BreadcrumbMeta[]> = {

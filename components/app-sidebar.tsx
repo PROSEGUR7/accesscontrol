@@ -79,6 +79,8 @@ type AppSidebarUser = {
   name: string
   email: string
   avatar?: string
+  tenant?: string
+  roles?: string[]
 }
 
 type AppSidebarProps = ComponentProps<typeof Sidebar> & {
@@ -88,18 +90,57 @@ type AppSidebarProps = ComponentProps<typeof Sidebar> & {
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const resolvedUser = user ?? fallbackData.user
 
+  const navUser = {
+    name: resolvedUser.name,
+    email: resolvedUser.email,
+    avatar: resolvedUser.avatar,
+  }
+
+  const teams = resolveTeams(user)
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={fallbackData.teams} />
+        <TeamSwitcher teams={teams} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={fallbackData.navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={resolvedUser} />
+        <NavUser user={navUser} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )
+}
+
+function resolveTeams(user?: AppSidebarUser) {
+  if (!user?.tenant) {
+    return fallbackData.teams
+  }
+
+  const friendlyName = formatTenantLabel(user.tenant)
+  const planLabel = Array.isArray(user.roles) && user.roles.length > 0 ? user.roles.join(" • ") : fallbackData.teams[0]?.plan ?? "Activo"
+
+  return [
+    {
+      name: friendlyName,
+      logo: Building2,
+      plan: planLabel,
+    },
+  ]
+}
+
+function formatTenantLabel(rawTenant: string) {
+  const cleaned = rawTenant.replace(/^tenant[_-]?/i, "")
+
+  if (!cleaned) {
+    return rawTenant
+  }
+
+  return cleaned
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
 }
