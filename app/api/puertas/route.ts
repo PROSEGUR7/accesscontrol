@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { query } from "@/lib/db"
 import { DOOR_COLUMNS, mapDoor, type DoorRow } from "./door-utils"
+import { getSessionFromRequest } from "@/lib/auth"
 
 const createDoorSchema = z.object({
   nombre: z.string().trim().min(1, "El nombre es obligatorio").max(120, "El nombre es demasiado largo"),
@@ -11,12 +12,20 @@ const createDoorSchema = z.object({
   activa: z.boolean().optional(),
 })
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   try {
     const rows = await query<DoorRow>(
       `SELECT ${DOOR_COLUMNS}
        FROM puertas
-       ORDER BY created_at DESC`
+       ORDER BY created_at DESC`,
+      [],
+      session.tenant,
     )
 
     const puertas = rows.map(mapDoor)
@@ -34,6 +43,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   let payload: unknown
   try {
     payload = await request.json()
@@ -71,7 +86,8 @@ export async function POST(request: NextRequest) {
         activa
       ) VALUES ($1, $2, $3, $4)
       RETURNING ${DOOR_COLUMNS}`,
-      [nombre, descripcion, ubicacion, activa]
+      [nombre, descripcion, ubicacion, activa],
+      session.tenant,
     )
 
     const [row] = rows

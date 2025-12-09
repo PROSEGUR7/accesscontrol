@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { query } from "@/lib/db"
 import { KEY_COLUMNS, KEY_DEFAULT_TYPE, mapKey, normalizeKeyPayload, type KeyRow } from "./key-utils"
+import { getSessionFromRequest } from "@/lib/auth"
 
 const allowedStates = ["activo", "baja", "extraviado"] as const
 
@@ -62,7 +63,13 @@ export const keyUpsertSchema = z
     }
   })
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   try {
     const baseQuery = `SELECT ${KEY_COLUMNS}
        FROM objetos o
@@ -75,11 +82,14 @@ export async function GET() {
         `${baseQuery}
          WHERE lower(o.tipo) = ANY($1)
          ORDER BY o.created_at DESC`,
-        [typeFilters]
+        [typeFilters],
+        session.tenant,
       )
       : await query<KeyRow>(
         `${baseQuery}
-         ORDER BY o.created_at DESC`
+         ORDER BY o.created_at DESC`,
+        [],
+        session.tenant,
       )
 
     const objetos = rows.map(mapKey)
@@ -97,6 +107,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   let payload: unknown
   try {
     payload = await request.json()
@@ -125,6 +141,7 @@ export async function POST(request: NextRequest) {
       const [personaConflict] = await query<{ id: number }>(
         `SELECT id FROM personas WHERE rfid_epc = $1 LIMIT 1`,
         [normalized.rfidEpc],
+        session.tenant,
       )
 
       if (personaConflict) {
@@ -132,6 +149,7 @@ export async function POST(request: NextRequest) {
         const [objectConflict] = await query<{ id: number }>(
           `SELECT id FROM objetos WHERE rfid_epc = $1 AND tipo <> $2 LIMIT 1`,
           values,
+          session.tenant,
         )
 
         if (objectConflict) {
@@ -191,7 +209,8 @@ export async function POST(request: NextRequest) {
         normalized.centroCosto,
         normalized.custodioId,
         normalized.ubicacionId,
-      ]
+      ],
+      session.tenant,
     )
 
     const insertedRow = inserted[0]
@@ -206,7 +225,8 @@ export async function POST(request: NextRequest) {
        LEFT JOIN personas prop ON prop.id = o.propietario_id
        LEFT JOIN ubicaciones u ON u.id = o.ubicacion_id
        WHERE o.id = $1`,
-      [insertedRow.id]
+      [insertedRow.id],
+      session.tenant,
     )
 
     if (!row) {

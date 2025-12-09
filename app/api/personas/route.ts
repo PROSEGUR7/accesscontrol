@@ -4,6 +4,7 @@ import { z } from "zod"
 import { query } from "@/lib/db"
 import { KEY_DEFAULT_TYPE } from "../keys/key-utils"
 import { mapPerson, PERSON_COLUMNS, type PersonRow } from "./persona-utils"
+import { getSessionFromRequest } from "@/lib/auth"
 
 export const personUpsertSchema = z.object({
   nombre: z.string().trim().min(1, "El nombre es obligatorio").max(255, "El nombre es demasiado largo"),
@@ -27,12 +28,20 @@ export const personUpsertSchema = z.object({
   }
 })
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   try {
     const rows = await query<PersonRow>(
       `SELECT ${PERSON_COLUMNS}
        FROM personas
-       ORDER BY created_at DESC`
+       ORDER BY created_at DESC`,
+      [],
+      session.tenant,
     )
 
     const personas = rows.map(mapPerson)
@@ -50,6 +59,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   let payload: unknown
   try {
     payload = await request.json()
@@ -82,6 +97,7 @@ export async function POST(request: NextRequest) {
       const [keyConflict] = await query<{ id: number; tipo: string }>(
         `SELECT id, tipo FROM objetos WHERE rfid_epc = $1 LIMIT 1`,
         [rfidEpc],
+        session.tenant,
       )
 
       if (keyConflict) {
@@ -109,7 +125,8 @@ export async function POST(request: NextRequest) {
         habilitado_hasta
       ) VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING ${PERSON_COLUMNS}`,
-      [nombre, documento, rfidEpc, habilitado, habilitadoDesde, habilitadoHasta]
+      [nombre, documento, rfidEpc, habilitado, habilitadoDesde, habilitadoHasta],
+      session.tenant,
     )
 
     const [row] = rows

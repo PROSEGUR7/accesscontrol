@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 
 import { getSessionFromRequest } from "@/lib/auth"
 import { query } from "@/lib/db"
@@ -15,10 +15,14 @@ type RecentRow = {
   timestamp: string
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const session = getSessionFromRequest(request)
     const tenant = session?.tenant
+
+    if (!tenant) {
+      return NextResponse.json({ message: "No autorizado" }, { status: 401 })
+    }
 
     const [countsRow] = await query<CountRow>(
       `SELECT
@@ -28,7 +32,7 @@ export async function GET(request: Request) {
          (SELECT count(*) FROM movimientos WHERE date(ts) = current_date AND autorizado = false) AS denied_today
        `,
       [],
-      tenant ?? undefined,
+      tenant,
     )
 
     const chart = await query<ChartRow>(
@@ -38,29 +42,39 @@ export async function GET(request: Request) {
        GROUP BY date(ts)
        ORDER BY day ASC`,
       [],
-      tenant ?? undefined,
+      tenant,
     )
 
     const recent = await query<RecentRow>(
-      `SELECT id,
-              COALESCE(persona_nombre, 'Desconocido') AS persona,
-              COALESCE(puerta_nombre, 'Desconocido') AS puerta,
-              autorizado,
-              ts AS timestamp
-       FROM movimientos
-       ORDER BY ts DESC
+      `SELECT m.id,
+              COALESCE(per.nombre, 'Desconocido') AS persona,
+              COALESCE(door.nombre, 'Desconocido') AS puerta,
+              m.autorizado,
+              m.ts AS timestamp
+       FROM movimientos m
+       LEFT JOIN personas per ON per.id = m.persona_id
+       LEFT JOIN puertas door ON door.id = m.puerta_id
+       ORDER BY m.ts DESC
        LIMIT 12`,
       [],
-      tenant ?? undefined,
+      tenant,
     )
 
-    return NextResponse.json({
-      counts: {
-        accessesToday: Number(countsRow?.accesses_today ?? 0),
-        activePersonnel: Number(countsRow?.active_personnel ?? 0),
-        monitoredDoors: Number(countsRow?.monitored_doors ?? 0),
-        deniedToday: Number(countsRow?.denied_today ?? 0),
+    const stats = {
+      accessesToday: {
+        value: Number(countsRow?.accesses_today ?? 0),
+        trend: null as number | null,
       },
+      activePeople: Number(countsRow?.active_personnel ?? 0),
+      monitoredDoors: Number(countsRow?.monitored_doors ?? 0),
+      deniedToday: {
+        value: Number(countsRow?.denied_today ?? 0),
+        trend: null as number | null,
+      },
+    }
+
+    return NextResponse.json({
+      stats,
       chart,
       recent,
     })

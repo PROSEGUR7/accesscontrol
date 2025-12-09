@@ -9,6 +9,7 @@ import {
   normalizeMovementPayload,
   type MovementRow,
 } from "./movement-utils"
+import { getSessionFromRequest } from "@/lib/auth"
 
 const timestampSchema = z
   .union([z.string().trim().min(1, "Marca de tiempo inválida"), z.number(), z.date()])
@@ -70,13 +71,14 @@ export const movementUpsertSchema = z.object({
     .optional(),
 })
 
-async function fetchMovementById(id: number) {
+async function fetchMovementById(id: number, tenant: string) {
   const rows = await query<MovementRow>(
     `SELECT ${MOVEMENT_COLUMNS}
      ${buildMovementFromClause()}
      WHERE m.id = $1
      LIMIT 1`,
     [id],
+    tenant,
   )
 
   const [row] = rows
@@ -84,6 +86,14 @@ async function fetchMovementById(id: number) {
 }
 
 export async function GET(request: NextRequest) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  const tenant = session.tenant
+
   const search = request.nextUrl.searchParams.get("search")?.trim()
   const statusRaw = request.nextUrl.searchParams.get("status")?.toLowerCase()
   const status = statusRaw && STATUS_VALUES.has(statusRaw) ? statusRaw : null
@@ -133,6 +143,7 @@ export async function GET(request: NextRequest) {
        FROM movimientos m
        ${whereClause}`,
       params,
+      tenant,
     )
 
     const total = Number(countRows[0]?.count ?? 0)
@@ -149,6 +160,7 @@ export async function GET(request: NextRequest) {
        LIMIT $${dataParams.length - 1}
        OFFSET $${dataParams.length}`,
       dataParams,
+      tenant,
     )
 
     const movimientos = rows.map(mapMovement)
@@ -171,6 +183,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
+  const tenant = session.tenant
+
   let payload: unknown
   try {
     payload = await request.json()
@@ -245,6 +265,7 @@ export async function POST(request: NextRequest) {
         normalized.motivo,
         normalized.extra,
       ],
+      tenant,
     )
 
     const record = inserted[0]
@@ -252,7 +273,7 @@ export async function POST(request: NextRequest) {
       throw new Error("No se pudo registrar el movimiento")
     }
 
-    const movimiento = await fetchMovementById(record.id)
+    const movimiento = await fetchMovementById(record.id, tenant)
     if (!movimiento) {
       throw new Error("No se pudo recuperar el movimiento registrado")
     }

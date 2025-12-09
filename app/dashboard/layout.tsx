@@ -18,11 +18,14 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     redirect('/')
   }
 
+  const displayName = user.nombre || session.nombre || 'Usuario'
+  const displayEmail = user.email
+
   return (
     <DashboardShell
       user={{
-        name: user.nombre,
-        email: user.email,
+        name: displayName,
+        email: displayEmail,
         roles: user.roles,
         tenant: session.tenant,
       }}

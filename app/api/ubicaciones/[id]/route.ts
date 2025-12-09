@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { z } from "zod"
 
 import { query } from "@/lib/db"
 import { locationUpsertSchema } from "../route"
 import { LOCATION_COLUMNS, mapLocation, normalizeLocationPayload, type LocationRow } from "../location-utils"
+import { getSessionFromRequest } from "@/lib/auth"
 
 const paramsSchema = z.object({
   id: z.coerce.number().int().positive("Identificador inválido"),
@@ -15,7 +16,13 @@ type Params = {
   }
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const parsed = paramsSchema.safeParse(params)
   if (!parsed.success) {
     return NextResponse.json({ error: "Identificador inválido" }, { status: 400 })
@@ -28,7 +35,8 @@ export async function DELETE(_request: Request, { params }: Params) {
       `DELETE FROM ubicaciones
        WHERE id = $1
        RETURNING ${LOCATION_COLUMNS}`,
-      [id]
+      [id],
+      session.tenant,
     )
 
     const [row] = rows
@@ -48,7 +56,13 @@ export async function DELETE(_request: Request, { params }: Params) {
   }
 }
 
-export async function PATCH(request: Request, { params }: Params) {
+export async function PATCH(request: NextRequest, { params }: Params) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const parsed = paramsSchema.safeParse(params)
   if (!parsed.success) {
     return NextResponse.json({ error: "Identificador inválido" }, { status: 400 })
@@ -89,7 +103,8 @@ export async function PATCH(request: Request, { params }: Params) {
               updated_at = NOW()
         WHERE id = $1
         RETURNING ${LOCATION_COLUMNS}`,
-      [id, normalized.nombre, normalized.tipo, normalized.descripcion, normalized.activa]
+      [id, normalized.nombre, normalized.tipo, normalized.descripcion, normalized.activa],
+      session.tenant,
     )
 
     const [row] = rows

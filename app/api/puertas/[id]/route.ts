@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { query } from "@/lib/db"
 import { DOOR_COLUMNS, mapDoor, type DoorRow } from "../door-utils"
+import { getSessionFromRequest } from "@/lib/auth"
 
 const paramsSchema = z.object({
   id: z.string().min(1, "El identificador es obligatorio"),
@@ -22,6 +23,12 @@ type Params = {
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const parsedParams = paramsSchema.safeParse(params)
   if (!parsedParams.success) {
     return NextResponse.json({ error: "Identificador inválido" }, { status: 400 })
@@ -70,7 +77,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
            updated_at = now()
        WHERE id = $1
        RETURNING ${DOOR_COLUMNS}`,
-      [id, nombre, descripcion, ubicacion, activa]
+      [id, nombre, descripcion, ubicacion, activa],
+      session.tenant,
     )
 
     const [row] = rows
@@ -99,7 +107,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const parsedParams = paramsSchema.safeParse(params)
   if (!parsedParams.success) {
     return NextResponse.json({ error: "Identificador inválido" }, { status: 400 })
@@ -115,7 +129,8 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
       `DELETE FROM puertas
        WHERE id = $1
        RETURNING ${DOOR_COLUMNS}`,
-      [id]
+      [id],
+      session.tenant,
     )
 
     const [row] = rows

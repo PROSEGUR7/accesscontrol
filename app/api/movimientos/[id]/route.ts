@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 
 import { query } from "@/lib/db"
 import { movementUpsertSchema } from "../route"
@@ -9,6 +9,7 @@ import {
   normalizeMovementPayload,
   type MovementRow,
 } from "../movement-utils"
+import { getSessionFromRequest } from "@/lib/auth"
 
 type Params = {
   params: {
@@ -24,7 +25,13 @@ function parseId(raw: string) {
   return value
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const movementId = parseId(params.id)
   if (!movementId) {
     return NextResponse.json({ error: "Identificador inválido" }, { status: 400 })
@@ -41,6 +48,7 @@ export async function DELETE(_request: Request, { params }: Params) {
        ${buildMovementFromClause("deleted m")}
        LIMIT 1`,
       [movementId],
+      session.tenant,
     )
 
     const [row] = rows
@@ -57,7 +65,13 @@ export async function DELETE(_request: Request, { params }: Params) {
   }
 }
 
-export async function PATCH(request: Request, { params }: Params) {
+export async function PATCH(request: NextRequest, { params }: Params) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const movementId = parseId(params.id)
   if (!movementId) {
     return NextResponse.json({ error: "Identificador inválido" }, { status: 400 })
@@ -141,6 +155,7 @@ export async function PATCH(request: Request, { params }: Params) {
         normalized.motivo,
         normalized.extra,
       ],
+      session.tenant,
     )
 
     const [row] = rows

@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 
 import { query } from "@/lib/db"
 import { keyUpsertSchema } from "../route"
 import { KEY_COLUMNS, mapKey, normalizeKeyPayload, type KeyRow } from "../key-utils"
+import { getSessionFromRequest } from "@/lib/auth"
 
 function getTypeFilters() {
   const raw = process.env.KEY_TYPES
@@ -21,7 +22,13 @@ type Params = {
   }
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const { id } = params
 
   const objectId = Number(id)
@@ -45,7 +52,8 @@ export async function DELETE(_request: Request, { params }: Params) {
          LEFT JOIN personas cust ON cust.id = o.custodio_id
          LEFT JOIN personas prop ON prop.id = o.propietario_id
          LEFT JOIN ubicaciones u ON u.id = o.ubicacion_id`,
-        [objectId, typeFilters]
+        [objectId, typeFilters],
+        session.tenant,
       )
       : await query<KeyRow>(
         `WITH deleted AS (
@@ -58,7 +66,8 @@ export async function DELETE(_request: Request, { params }: Params) {
          LEFT JOIN personas cust ON cust.id = o.custodio_id
          LEFT JOIN personas prop ON prop.id = o.propietario_id
          LEFT JOIN ubicaciones u ON u.id = o.ubicacion_id`,
-        [objectId]
+        [objectId],
+        session.tenant,
       )
 
     const [row] = rows
@@ -78,7 +87,13 @@ export async function DELETE(_request: Request, { params }: Params) {
   }
 }
 
-export async function PATCH(request: Request, { params }: Params) {
+export async function PATCH(request: NextRequest, { params }: Params) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const { id } = params
 
   const objectId = Number(id)
@@ -114,6 +129,7 @@ export async function PATCH(request: Request, { params }: Params) {
       const [personaConflict] = await query<{ id: number }>(
         `SELECT id FROM personas WHERE rfid_epc = $1 LIMIT 1`,
         [normalized.rfidEpc],
+        session.tenant,
       )
 
       if (personaConflict) {
@@ -121,6 +137,7 @@ export async function PATCH(request: Request, { params }: Params) {
         const [objectConflict] = await query<{ id: number }>(
           `SELECT id FROM objetos WHERE rfid_epc = $1 AND tipo <> $2 LIMIT 1`,
           values,
+          session.tenant,
         )
 
         if (objectConflict) {
@@ -198,7 +215,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
     const params = typeFilters ? [...paramsBase, typeFilters] : paramsBase
 
-    const rows = await query<KeyRow>(filteredQuery, params)
+    const rows = await query<KeyRow>(filteredQuery, params, session.tenant)
 
     const [row] = rows
     if (!row) {

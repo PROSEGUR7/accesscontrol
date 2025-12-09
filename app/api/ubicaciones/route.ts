@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { query } from "@/lib/db"
 import { LOCATION_COLUMNS, mapLocation, normalizeLocationPayload, type LocationRow } from "./location-utils"
+import { getSessionFromRequest } from "@/lib/auth"
 
 const optionalString = (limit: number, message: string) =>
   z.string().trim().max(limit, message).optional()
@@ -14,12 +15,20 @@ export const locationUpsertSchema = z.object({
   activa: z.boolean().optional(),
 })
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   try {
     const rows = await query<LocationRow>(
       `SELECT ${LOCATION_COLUMNS}
        FROM ubicaciones
-       ORDER BY nombre ASC`
+       ORDER BY nombre ASC`,
+      [],
+      session.tenant,
     )
 
     const ubicaciones = rows.map(mapLocation)
@@ -37,6 +46,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   let payload: unknown
   try {
     payload = await request.json()
@@ -65,7 +80,8 @@ export async function POST(request: NextRequest) {
       `INSERT INTO ubicaciones (nombre, tipo, descripcion, activa)
        VALUES ($1, $2, $3, $4)
        RETURNING ${LOCATION_COLUMNS}`,
-      [normalized.nombre, normalized.tipo, normalized.descripcion, normalized.activa]
+      [normalized.nombre, normalized.tipo, normalized.descripcion, normalized.activa],
+      session.tenant,
     )
 
     const [row] = rows
@@ -80,7 +96,7 @@ export async function POST(request: NextRequest) {
     if (pgError?.code === "23505") {
       return NextResponse.json(
         { error: "El nombre ya está registrado" },
-        { status: 409 }
+        { status: 409 },
       )
     }
 

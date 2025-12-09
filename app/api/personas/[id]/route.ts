@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { z } from "zod"
 
 import { query } from "@/lib/db"
@@ -6,6 +6,7 @@ import { query } from "@/lib/db"
 import { KEY_DEFAULT_TYPE } from "../../keys/key-utils"
 import { personUpsertSchema } from "../route"
 import { PERSON_COLUMNS, mapPerson, type PersonRow } from "../persona-utils"
+import { getSessionFromRequest } from "@/lib/auth"
 
 const paramsSchema = z.object({
   id: z.coerce.number().int().positive("El identificador es obligatorio"),
@@ -17,7 +18,13 @@ type Params = {
   }
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: NextRequest, { params }: Params) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const parsed = paramsSchema.safeParse(params)
   if (!parsed.success) {
     return NextResponse.json({ error: "Identificador inválido" }, { status: 400 })
@@ -31,6 +38,7 @@ export async function DELETE(_request: Request, { params }: Params) {
        WHERE id = $1
        RETURNING ${PERSON_COLUMNS}`,
       [id],
+      session.tenant,
     )
 
     const [deleted] = rows
@@ -51,7 +59,13 @@ export async function DELETE(_request: Request, { params }: Params) {
   }
 }
 
-export async function PATCH(request: Request, { params }: Params) {
+export async function PATCH(request: NextRequest, { params }: Params) {
+  const session = getSessionFromRequest(request)
+
+  if (!session?.tenant) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+  }
+
   const parsed = paramsSchema.safeParse(params)
   if (!parsed.success) {
     return NextResponse.json({ error: "Identificador inválido" }, { status: 400 })
@@ -93,6 +107,7 @@ export async function PATCH(request: Request, { params }: Params) {
       const [keyConflict] = await query<{ id: number; tipo: string }>(
         `SELECT id, tipo FROM objetos WHERE rfid_epc = $1 LIMIT 1`,
         [rfidEpc],
+        session.tenant,
       )
 
       if (keyConflict) {
@@ -112,6 +127,7 @@ export async function PATCH(request: Request, { params }: Params) {
       const [personaConflict] = await query<{ id: number }>(
         `SELECT id FROM personas WHERE rfid_epc = $1 AND id <> $2 LIMIT 1`,
         [rfidEpc, id],
+        session.tenant,
       )
 
       if (personaConflict) {
@@ -134,6 +150,7 @@ export async function PATCH(request: Request, { params }: Params) {
        WHERE id = $1
        RETURNING ${PERSON_COLUMNS}`,
       [id, nombre, documento, rfidEpc, habilitado, habilitadoDesde, habilitadoHasta],
+      session.tenant,
     )
 
     const [updated] = rows
