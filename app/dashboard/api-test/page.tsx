@@ -324,7 +324,8 @@ export default function ApiTestPage() {
                               event.severity === "destructive"
                                 ? "border-red-500 bg-red-500/10 text-red-500"
                                 : "border-emerald-500 bg-emerald-500/10 text-emerald-600",
-                            , "whitespace-nowrap")}
+                              "whitespace-nowrap",
+                            )}
                           >
                             {event.tipo ?? "N/A"}
                           </Badge>
@@ -338,7 +339,8 @@ export default function ApiTestPage() {
                                 : event.autorizado
                                   ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
                                   : "border-muted bg-muted text-muted-foreground",
-                            , "whitespace-nowrap")}
+                              "whitespace-nowrap",
+                            )}
                           >
                             {event.autorizado === null
                               ? "Pendiente"
@@ -356,7 +358,8 @@ export default function ApiTestPage() {
                                 : event.gpoResultado === "success"
                                   ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
                                   : "border-muted bg-muted text-muted-foreground",
-                            , "whitespace-nowrap")}
+                              "whitespace-nowrap",
+                            )}
                           >
                             {event.gpoResultado === "success"
                               ? "Pulso"
