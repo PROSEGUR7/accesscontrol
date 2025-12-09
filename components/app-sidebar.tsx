@@ -14,11 +14,21 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
+type AppSidebarUser = {
+  name: string
+  email: string
+  avatar?: string
+  tenant?: string
+  roles?: string[]
+}
+
+const fallbackUser: AppSidebarUser = {
+  name: "Adriana Duarte",
+  email: "admin@rfid-access.com",
+}
+
 const fallbackData = {
-  user: {
-    name: "Adriana Duarte",
-    email: "admin@rfid-access.com",
-  },
+  user: fallbackUser,
   teams: [
     {
       name: "RFID Access · Matriz",
@@ -73,14 +83,6 @@ const fallbackData = {
       icon: Activity,
     },
   ],
-}
-
-type AppSidebarUser = {
-  name: string
-  email: string
-  avatar?: string
-  tenant?: string
-  roles?: string[]
 }
 
 type AppSidebarProps = ComponentProps<typeof Sidebar> & {
