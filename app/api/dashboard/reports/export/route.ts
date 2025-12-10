@@ -543,15 +543,14 @@ async function buildPdfDocument(
 function fileResponse(buffer: Buffer, contentType: string, extension: string) {
   const filename = `reportes-${formatFileTimestamp(new Date())}.${extension}`
 
-  const uint8 = Uint8Array.from(buffer)
-  const blob = new Blob([uint8])
+  const body = buffer as unknown as BodyInit
 
-  return new NextResponse(blob, {
+  return new NextResponse(body, {
     headers: {
       "Content-Type": contentType,
       "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "no-store",
-      "Content-Length": String(uint8.byteLength),
+      "Content-Length": String(buffer.byteLength),
     },
   })
 }
