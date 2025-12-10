@@ -150,15 +150,6 @@ function sortMovements(movements: Movement[]) {
   })
 }
 
-function encodeCsvValue(value: unknown) {
-  if (value === null || typeof value === "undefined") {
-    return ""
-  }
-  const normalized = typeof value === "string" ? value : String(value)
-  const escaped = normalized.replace(/"/g, '""')
-  return `"${escaped}"`
-}
-
 export default function MovimientosPage() {
   const [movements, setMovements] = useState<Movement[]>([])
   const [loading, setLoading] = useState(false)
@@ -421,7 +412,7 @@ export default function MovimientosPage() {
     }
   }, [processingId, deleteTarget, page, filters, loadMovements, closeDeleteDialog])
 
-  const exportMovements = useCallback(() => {
+  const exportMovements = useCallback(async () => {
     if (!movements.length) {
       toast({
         title: "Sin datos para exportar",
@@ -432,55 +423,59 @@ export default function MovimientosPage() {
 
     if (typeof window === "undefined") return
 
-    const headers = [
-      "ID",
-      "Fecha",
-      "Tipo",
-      "Dirección",
-      "Persona",
-      "Objeto",
-      "Puerta",
-      "EPC",
-      "Autorizado",
-      "Motivo",
-    ]
+    const params = new URLSearchParams()
+    params.set("page", page.toString())
+    params.set("pageSize", PAGE_SIZE.toString())
 
-    const rows = movements.map((movement) => [
-      movement.id,
-      movement.timestamp,
-      movement.tipo ?? "",
-      movement.direccion ?? "",
-      movement.personaNombre ?? "",
-      movement.objetoNombre ?? "",
-      movement.puertaNombre ?? "",
-      movement.epc ?? "",
-      typeof movement.autorizado === "boolean"
-        ? movement.autorizado
-          ? "Autorizado"
-          : "Denegado"
-        : "Sin decisión",
-      movement.motivo ?? movement.decisionMotivo ?? "",
-    ])
+    const trimmedSearch = filters.search.trim()
+    if (trimmedSearch) {
+      params.set("search", trimmedSearch)
+    }
 
-    const csv = [headers, ...rows]
-      .map((row) => row.map((value) => encodeCsvValue(value)).join(","))
-      .join("\n")
+    if (filters.status !== "all") {
+      params.set("status", filters.status)
+    }
 
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `movimientos_${new Date().toISOString().replace(/[:]/g, "-")}.csv`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+    if (filters.from) {
+      params.set("from", filters.from)
+    }
 
-    toast({
-      title: "Exportación generada",
-      description: "Se descargó un archivo CSV con los movimientos visibles.",
-    })
-  }, [movements, toast])
+    if (filters.to) {
+      params.set("to", filters.to)
+    }
+
+    try {
+      const response = await fetch(`/api/dashboard/movimientos/export?${params.toString()}`, {
+        cache: "no-store",
+      })
+
+      if (!response.ok) {
+        throw new Error("No se pudo generar la exportación")
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `movimientos_${new Date().toISOString().replace(/[:]/g, "-")}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      toast({
+        title: "Exportación generada",
+        description: "Se descargó un archivo Excel con los movimientos visibles.",
+      })
+    } catch (error) {
+      console.error("Error al exportar movimientos", error)
+      toast({
+        variant: "destructive",
+        title: "No se pudo exportar",
+        description: "Intenta nuevamente en unos minutos.",
+      })
+    }
+  }, [movements.length, filters, page, toast])
 
   const onSubmit = form.handleSubmit(async (values) => {
     setSubmitting(true)
@@ -640,7 +635,7 @@ export default function MovimientosPage() {
                 onClick={exportMovements}
                 disabled={loading || refreshing || movements.length === 0}
               >
-                <Download className="mr-2 size-4" /> Exportar CSV
+                <Download className="mr-2 size-4" /> Exportar Excel
               </Button>
             </div>
           </CardHeader>
