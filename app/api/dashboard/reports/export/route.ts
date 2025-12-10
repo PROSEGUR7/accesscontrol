@@ -30,13 +30,16 @@ export async function GET(request: NextRequest) {
     }
 
     const format = (request.nextUrl.searchParams.get("format") ?? "excel").toLowerCase() as ExportFormat
-
     if (!isValidFormat(format)) {
       return NextResponse.json({ message: "Formato no soportado" }, { status: 400 })
     }
 
+    // Filtros de fecha
+    const from = request.nextUrl.searchParams.get("from")
+    const to = request.nextUrl.searchParams.get("to")
+
     const { daily, recent, personas, objetos, puertas, lectores, tipos, decisionReasons, decisionCodes } =
-      await getReportsDataForTenant(tenant)
+      await getReportsDataForTenant(tenant, { from, to })
 
     if (format === "excel") {
       const buffer = await buildExcelWorkbook(

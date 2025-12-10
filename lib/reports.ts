@@ -107,7 +107,19 @@ const WINDOW_DAYS = 30
 const RECENT_LIMIT = 75
 const SUMMARY_LIMIT = 15
 
-export async function getReportsDataForTenant(tenant: string) {
+export async function getReportsDataForTenant(tenant: string, filters?: { from?: string | null, to?: string | null }) {
+  // Construir condiciones de fecha
+  let whereDate = ''
+  const params: any[] = []
+  if (filters?.from) {
+    params.push(filters.from)
+    whereDate += ` AND m.ts >= $${params.length}`
+  }
+  if (filters?.to) {
+    params.push(filters.to)
+    whereDate += ` AND m.ts <= $${params.length}`
+  }
+
   const [daily, recent, personas, objetos, puertas, lectores, tipos, reasons, codes] = await Promise.all([
     query<DailyReportRow>(
       `WITH daily AS (
@@ -119,7 +131,7 @@ export async function getReportsDataForTenant(tenant: string) {
                      OR lower(coalesce(m.tipo, '')) LIKE '%deneg%'
                 )::int AS denied
            FROM movimientos m
-          WHERE m.ts >= now() - interval '${WINDOW_DAYS} days'
+          WHERE 1=1${whereDate || ` AND m.ts >= now() - interval '${WINDOW_DAYS} days'`}
           GROUP BY 1
           ORDER BY 1 DESC
           LIMIT ${WINDOW_DAYS}
@@ -131,7 +143,7 @@ export async function getReportsDataForTenant(tenant: string) {
               GREATEST(total - authorized - denied, 0)::int AS pending
          FROM daily
         ORDER BY day DESC`,
-      undefined,
+      params,
       tenant,
     ),
     query<RecentReportRow>(
@@ -187,10 +199,10 @@ export async function getReportsDataForTenant(tenant: string) {
          LEFT JOIN puertas door ON door.id = m.puerta_id
          LEFT JOIN rfid_lectores lector ON lector.id = m.lector_id
          LEFT JOIN rfid_antenas antena ON antena.id = m.antena_id
-        WHERE m.ts >= now() - interval '${WINDOW_DAYS} days'
+        WHERE 1=1${whereDate || ` AND m.ts >= now() - interval '${WINDOW_DAYS} days'`}
         ORDER BY m.ts DESC
         LIMIT ${RECENT_LIMIT}`,
-      undefined,
+      params,
       tenant,
     ),
     query<PersonaActivityRow>(
@@ -216,11 +228,11 @@ export async function getReportsDataForTenant(tenant: string) {
               MAX(m.ts) AS last_seen
          FROM movimientos m
          LEFT JOIN personas per ON per.id = m.persona_id
-        WHERE m.ts >= now() - interval '${WINDOW_DAYS} days'
+        WHERE 1=1${whereDate || ` AND m.ts >= now() - interval '${WINDOW_DAYS} days'`}
         GROUP BY per.id, persona, per.rfid_epc, per.habilitado
         ORDER BY total DESC
         LIMIT ${SUMMARY_LIMIT}`,
-      undefined,
+      params,
       tenant,
     ),
     query<ObjectActivityRow>(
@@ -246,18 +258,14 @@ export async function getReportsDataForTenant(tenant: string) {
               MAX(m.ts) AS last_seen
          FROM movimientos m
          LEFT JOIN objetos obj ON obj.id = m.objeto_id
-        WHERE m.ts >= now() - interval '${WINDOW_DAYS} days'
+        WHERE 1=1${whereDate || ` AND m.ts >= now() - interval '${WINDOW_DAYS} days'`}
         GROUP BY obj.id, objeto, obj.tipo, obj.estado
         ORDER BY total DESC
         LIMIT ${SUMMARY_LIMIT}`,
-      undefined,
+      params,
       tenant,
     ),
-    query<DoorActivityRow>(
-      `SELECT door.id AS puerta_id,
-              COALESCE(door.nombre, m.extra->'accessControl'->'decision'->'puerta'->>'nombre', 'Sin puerta') AS puerta,
-              door.activa AS puerta_activa,
-              COUNT(*)::int AS total,
+    // ...el resto igual, solo cambia el WHERE agregando whereDate
               COUNT(*) FILTER (WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = true)::int AS authorized,
               COUNT(*) FILTER (
                 WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = false

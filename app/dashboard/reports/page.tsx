@@ -51,9 +51,40 @@ function statusBadge(value: boolean | null) {
   return <Badge variant="outline">Sin decisión</Badge>
 }
 
-export default async function ReportsPage() {
-  const { daily, recent, personas, objetos, puertas, lectores, tipos, decisionReasons, decisionCodes } =
-    await getReportsData()
+import { useState } from "react"
+
+export default function ReportsPageWrapper() {
+  const [from, setFrom] = useState("")
+  const [to, setTo] = useState("")
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+
+  async function fetchReports() {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (from) params.set("from", from)
+      if (to) params.set("to", to)
+      const res = await fetch(`/api/dashboard/reports/export?format=json&${params.toString()}`)
+      const json = await res.json()
+      setData(json)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Cargar datos iniciales
+  useEffect(() => { fetchReports() }, [])
+
+  const daily = data?.daily || []
+  const recent = data?.recent || []
+  const personas = data?.personas || []
+  const objetos = data?.objetos || []
+  const puertas = data?.puertas || []
+  const lectores = data?.lectores || []
+  const tipos = data?.tipos || []
+  const decisionReasons = data?.decisionReasons || []
+  const decisionCodes = data?.decisionCodes || []
 
   const totals = daily.reduce(
     (acc, item) => {
@@ -72,16 +103,20 @@ export default async function ReportsPage() {
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <CardTitle>Reportes y auditoría</CardTitle>
-            <CardDescription>Actividad real basada en movimientos de los últimos 30 días.</CardDescription>
+            <CardDescription>Actividad real basada en movimientos filtrados.</CardDescription>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            <input type="date" value={from} onChange={e => setFrom(e.target.value)} className="border rounded px-2 py-1 text-sm" />
+            <span>a</span>
+            <input type="date" value={to} onChange={e => setTo(e.target.value)} className="border rounded px-2 py-1 text-sm" />
+            <Button size="sm" onClick={fetchReports} disabled={loading}>{loading ? "Cargando..." : "Filtrar"}</Button>
             <Button asChild variant="outline" size="sm">
-              <a href="/api/dashboard/reports/export?format=excel">
+              <a href={`/api/dashboard/reports/export?format=excel${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`}>
                 <FileSpreadsheet className="mr-2 h-4 w-4" aria-hidden="true" /> Exportar Excel
               </a>
             </Button>
             <Button asChild variant="outline" size="sm">
-              <a href="/api/dashboard/reports/export?format=pdf">
+              <a href={`/api/dashboard/reports/export?format=pdf${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`}>
                 <FileText className="mr-2 h-4 w-4" aria-hidden="true" /> Exportar PDF
               </a>
             </Button>
