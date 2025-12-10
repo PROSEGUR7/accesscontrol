@@ -549,7 +549,7 @@ function fileResponse(buffer: Buffer, contentType: string, extension: string) {
   return new NextResponse(blob, {
     headers: {
       "Content-Type": contentType,
-      "Content-Disposition": `attachment; filename=\"${filename}\"`,
+      "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "no-store",
       "Content-Length": String(uint8.byteLength),
     },
