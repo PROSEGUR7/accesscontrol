@@ -1,30 +1,13 @@
+import { FileSpreadsheet, FileText } from "lucide-react"
+
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { query } from "@/lib/db"
 import { getSessionFromCookies } from "@/lib/auth"
+import { getReportsDataForTenant, type DailyReportRow, type RecentReportRow } from "@/lib/reports"
 
 export const revalidate = 0
-
-type DailyRow = {
-  day: string
-  total: number
-  authorized: number
-  denied: number
-  pending: number
-}
-
-type RecentRow = {
-  id: number
-  ts: Date
-  epc: string | null
-  persona: string | null
-  objeto: string | null
-  puerta: string | null
-  tipo: string | null
-  motivo: string | null
-  authorized: boolean | null
-}
 
 async function getReportsData() {
   const session = await getSessionFromCookies()
@@ -35,54 +18,7 @@ async function getReportsData() {
 
   const tenant = session.tenant
 
-  const [daily, recent] = await Promise.all([
-    query<DailyRow>(
-      `WITH daily AS (
-         SELECT date_trunc('day', m.ts)::date AS day,
-                COUNT(*)::int AS total,
-                COUNT(*) FILTER (WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = true)::int AS authorized,
-                COUNT(*) FILTER (
-                  WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = false
-                     OR lower(coalesce(m.tipo, '')) LIKE '%deneg%'
-                )::int AS denied
-           FROM movimientos m
-          WHERE m.ts >= now() - interval '30 days'
-          GROUP BY 1
-          ORDER BY 1 DESC
-          LIMIT 30
-       )
-       SELECT to_char(day, 'YYYY-MM-DD') AS day,
-              total,
-              authorized,
-              denied,
-              GREATEST(total - authorized - denied, 0)::int AS pending
-         FROM daily
-        ORDER BY day DESC`,
-      undefined,
-      tenant,
-    ),
-    query<RecentRow>(
-      `SELECT m.id,
-              m.ts,
-              m.epc,
-              per.nombre AS persona,
-              obj.nombre AS objeto,
-              door.nombre AS puerta,
-              m.tipo,
-              m.motivo,
-              (m.extra->'accessControl'->'decision'->>'authorized')::boolean AS authorized
-         FROM movimientos m
-         LEFT JOIN personas per ON per.id = m.persona_id
-         LEFT JOIN objetos obj ON obj.id = m.objeto_id
-         LEFT JOIN puertas door ON door.id = m.puerta_id
-        ORDER BY m.ts DESC
-        LIMIT 12`,
-      undefined,
-      tenant,
-    ),
-  ])
-
-  return { daily, recent }
+  return getReportsDataForTenant(tenant)
 }
 
 function formatDate(value: string | Date) {
@@ -132,9 +68,23 @@ export default async function ReportsPage() {
   return (
     <div className="space-y-4">
       <Card className="border-border/60">
-        <CardHeader>
-          <CardTitle>Reportes y auditoría</CardTitle>
-          <CardDescription>Actividad real basada en movimientos de los últimos 30 días.</CardDescription>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle>Reportes y auditoría</CardTitle>
+            <CardDescription>Actividad real basada en movimientos de los últimos 30 días.</CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <a href="/api/dashboard/reports/export?format=excel">
+                <FileSpreadsheet className="mr-2 h-4 w-4" aria-hidden="true" /> Exportar Excel
+              </a>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <a href="/api/dashboard/reports/export?format=pdf">
+                <FileText className="mr-2 h-4 w-4" aria-hidden="true" /> Exportar PDF
+              </a>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
