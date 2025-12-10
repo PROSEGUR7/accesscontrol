@@ -365,8 +365,7 @@ async function buildExcelWorkbook(
   codesSheet.addRows(decisionCodes.map((row) => ({ code: row.code, total: row.total })))
   enableAutoFilter(codesSheet)
 
-  const arrayBuffer = await workbook.xlsx.writeBuffer()
-  return Buffer.from(arrayBuffer)
+  return workbook.xlsx.writeBuffer()
 }
 
 async function buildPdfDocument(
@@ -391,12 +390,15 @@ async function buildPdfDocument(
     { total: 0, authorized: 0, denied: 0, pending: 0 },
   )
 
-  return await new Promise<Buffer>((resolve, reject) => {
+  return await new Promise<Uint8Array>((resolve, reject) => {
     const doc = new PDFDocument({ margin: 40, size: "A4" })
     const chunks: Buffer[] = []
 
     doc.on("data", (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)))
-    doc.on("end", () => resolve(Buffer.concat(chunks)))
+    doc.on("end", () => {
+      const merged = Buffer.concat(chunks)
+      resolve(new Uint8Array(merged))
+    })
     doc.on("error", (error) => reject(error))
 
     doc.fontSize(18).text("Reporte de movimientos", { align: "center" })
@@ -540,17 +542,27 @@ async function buildPdfDocument(
   })
 }
 
-function fileResponse(buffer: Buffer, contentType: string, extension: string) {
+type BinaryPayload = ArrayBuffer | Uint8Array
+
+function fileResponse(payload: BinaryPayload, contentType: string, extension: string) {
   const filename = `reportes-${formatFileTimestamp(new Date())}.${extension}`
 
-  const body = buffer as unknown as BodyInit
+  let dataView: Uint8Array
+  if (payload instanceof ArrayBuffer) {
+    dataView = new Uint8Array(payload)
+  } else {
+    dataView = new Uint8Array(payload)
+  }
 
-  return new NextResponse(body, {
+  const arrayBuffer = new ArrayBuffer(dataView.byteLength)
+  new Uint8Array(arrayBuffer).set(dataView)
+
+  return new NextResponse(arrayBuffer, {
     headers: {
       "Content-Type": contentType,
       "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "no-store",
-      "Content-Length": String(buffer.byteLength),
+      "Content-Length": String(dataView.byteLength),
     },
   })
 }
