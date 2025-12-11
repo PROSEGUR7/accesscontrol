@@ -55,8 +55,6 @@ function statusBadge(value: boolean | null) {
 }
 
 
-"use client"
-
 import { useState, useEffect } from "react"
 
 export default function ReportsPageWrapper() {
