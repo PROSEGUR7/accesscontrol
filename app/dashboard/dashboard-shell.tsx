@@ -4,6 +4,9 @@ import { Fragment, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 
 import { AppSidebar } from '@/components/app-sidebar'
+import { ModeToggle } from '@/components/ui/mode-toggle'
+import { ThemeSelect } from '@/components/ui/theme-select'
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -104,6 +107,10 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
                 })}
               </BreadcrumbList>
             </Breadcrumb>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <ModeToggle />
+            <ThemeSelect />
           </div>
         </header>
         <div

@@ -1,4 +1,5 @@
 import type React from "react"
+import { ThemeProvider } from "@/components/theme-provider"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 
@@ -33,13 +34,15 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={cn(geistSans.variable, geistMono.variable, "font-sans antialiased")}
         suppressHydrationWarning
       >
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
           <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   )
