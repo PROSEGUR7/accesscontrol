@@ -660,10 +660,22 @@ export async function POST(req: NextRequest) {
 
     const formatted = insertions.map((movement) => formatMovement(movement))
 
+
+    // Mock: calcular posición x, y y zona para RTLS
     const io = getSocketServer()
     for (const movement of formatted) {
-      io?.emit("rfid-event", movement)
-      logDebug("Movement stored", movement)
+      // Mock simple: asignar coordenadas fijas por EPC (hash simple)
+      const hash = Array.from(movement.epc ?? "0").reduce((acc, c) => acc + c.charCodeAt(0), 0)
+      const x = (hash % 100)
+      const y = ((hash * 7) % 100)
+      const zona = x < 50 ? "A" : "B"
+      io?.emit("rfid-event", {
+        ...movement,
+        x,
+        y,
+        zona,
+      })
+      logDebug("Movement stored", { ...movement, x, y, zona })
     }
 
     if (formatted.length === 1) {

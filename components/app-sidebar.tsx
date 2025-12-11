@@ -82,9 +82,13 @@ const fallbackData = {
       url: "/dashboard/api-test",
       icon: Activity,
     },
+    {
+      title: "RTLS",
+      url: "/dashboard/rtls",
+      icon: MapPin, // Puedes cambiar el icono si lo deseas
+    },
   ],
-}
-
+};
 type AppSidebarProps = ComponentProps<typeof Sidebar> & {
   user?: AppSidebarUser
 }

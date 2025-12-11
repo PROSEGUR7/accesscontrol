@@ -46,6 +46,7 @@ export default function ReportsPageWrapper() {
   const [to, setTo] = useState("")
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [reportType, setReportType] = useState("movimientos")
 
   async function fetchReports() {
     setLoading(true)
@@ -98,13 +99,28 @@ export default function ReportsPageWrapper() {
             <span>a</span>
             <input type="date" value={to} onChange={e => setTo(e.target.value)} className="border rounded px-2 py-1 text-sm" />
             <Button size="sm" onClick={fetchReports} disabled={loading}>{loading ? "Cargando..." : "Filtrar"}</Button>
+            <select
+            className="border rounded px-2 py-1 text-sm"
+            value={reportType}
+            onChange={e => setReportType(e.target.value)}
+            style={{ minWidth: 160 }}
+          >
+            <option value="movimientos">Reportes y auditoría</option>
+            <option value="actividad">Actividad por día</option>
+            <option value="detallados">Movimientos detallados</option>
+            <option value="personas">Personas</option>
+            <option value="objetos">Objetos</option>
+            <option value="puertas">Puertas</option>
+            <option value="lectores">Lectores</option>
+            <option value="tipos">Tipos</option>
+          </select>
             <Button asChild variant="outline" size="sm">
-              <a href={`/api/dashboard/reports/export?format=excel${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`}>
+              <a href={`/api/dashboard/reports/export?format=excel&type=${reportType}${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`}>
                 <FileSpreadsheet className="mr-2 h-4 w-4" aria-hidden="true" /> Exportar Excel
               </a>
             </Button>
             <Button asChild variant="outline" size="sm">
-              <a href={`/api/dashboard/reports/export?format=pdf${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`}>
+              <a href={`/api/dashboard/reports/export?format=pdf&type=${reportType}${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`}>
                 <FileText className="mr-2 h-4 w-4" aria-hidden="true" /> Exportar PDF
               </a>
             </Button>

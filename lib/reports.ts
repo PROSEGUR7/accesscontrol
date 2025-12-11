@@ -123,7 +123,7 @@ export async function getReportsDataForTenant(tenant: string, filters?: { from?:
   const [daily, recent, personas, objetos, puertas, lectores, tipos, reasons, codes] = await Promise.all([
     query<DailyReportRow>(
       `WITH daily AS (
-         SELECT date_trunc('day', m.ts)::date AS day,
+         SELECT CAST(date_trunc('day', m.ts) AS date) AS day,
                 COUNT(*)::int AS total,
                 COUNT(*) FILTER (WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = true)::int AS authorized,
                 COUNT(*) FILTER (

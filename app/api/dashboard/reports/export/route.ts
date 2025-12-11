@@ -34,39 +34,80 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: "Formato no soportado" }, { status: 400 })
     }
 
-    // Filtros de fecha
+    // Filtros de fecha y tipo de reporte
     const from = request.nextUrl.searchParams.get("from")
     const to = request.nextUrl.searchParams.get("to")
+    const type = request.nextUrl.searchParams.get("type") || "movimientos"
 
-    const { daily, recent, personas, objetos, puertas, lectores, tipos, decisionReasons, decisionCodes } =
-      await getReportsDataForTenant(tenant, { from, to })
+    const empty = [];
+    const { daily = empty, recent = empty, personas = empty, objetos = empty, puertas = empty, lectores = empty, tipos = empty, decisionReasons = empty, decisionCodes = empty } =
+      await getReportsDataForTenant(tenant, { from, to }) || {};
 
+    // Filtrar solo la hoja/sección correspondiente, pero siempre con columnas
     if (format === "excel") {
-      const buffer = await buildExcelWorkbook(
-        daily,
-        recent,
-        personas,
-        objetos,
-        puertas,
-        lectores,
-        tipos,
-        decisionReasons,
-        decisionCodes,
-      )
+      let buffer;
+      switch (type) {
+        case "movimientos":
+        case "reportes y auditoría":
+          buffer = await buildExcelWorkbook(daily, empty, empty, empty, empty, empty, empty, empty, empty);
+          break;
+        case "actividad":
+          buffer = await buildExcelWorkbook(daily, empty, empty, empty, empty, empty, empty, empty, empty);
+          break;
+        case "detallados":
+          buffer = await buildExcelWorkbook(empty, recent, empty, empty, empty, empty, empty, empty, empty);
+          break;
+        case "personas":
+          buffer = await buildExcelWorkbook(empty, empty, personas, empty, empty, empty, empty, empty, empty);
+          break;
+        case "objetos":
+          buffer = await buildExcelWorkbook(empty, empty, empty, objetos, empty, empty, empty, empty, empty);
+          break;
+        case "puertas":
+          buffer = await buildExcelWorkbook(empty, empty, empty, empty, puertas, empty, empty, empty, empty);
+          break;
+        case "lectores":
+          buffer = await buildExcelWorkbook(empty, empty, empty, empty, empty, lectores, empty, empty, empty);
+          break;
+        case "tipos":
+          buffer = await buildExcelWorkbook(empty, empty, empty, empty, empty, empty, tipos, empty, empty);
+          break;
+        default:
+          buffer = await buildExcelWorkbook(daily, recent, personas, objetos, puertas, lectores, tipos, decisionReasons, decisionCodes);
+      }
       return fileResponse(buffer, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx")
     }
 
-    const buffer = await buildPdfDocument(
-      daily,
-      recent,
-      personas,
-      objetos,
-      puertas,
-      lectores,
-      tipos,
-      decisionReasons,
-      decisionCodes,
-    )
+    let buffer;
+    switch (type) {
+      case "movimientos":
+      case "reportes y auditoría":
+        buffer = await buildPdfDocument(daily, empty, empty, empty, empty, empty, empty, empty, empty);
+        break;
+      case "actividad":
+        buffer = await buildPdfDocument(daily, empty, empty, empty, empty, empty, empty, empty, empty);
+        break;
+      case "detallados":
+        buffer = await buildPdfDocument(empty, recent, empty, empty, empty, empty, empty, empty, empty);
+        break;
+      case "personas":
+        buffer = await buildPdfDocument(empty, empty, personas, empty, empty, empty, empty, empty, empty);
+        break;
+      case "objetos":
+        buffer = await buildPdfDocument(empty, empty, empty, objetos, empty, empty, empty, empty, empty);
+        break;
+      case "puertas":
+        buffer = await buildPdfDocument(empty, empty, empty, empty, puertas, empty, empty, empty, empty);
+        break;
+      case "lectores":
+        buffer = await buildPdfDocument(empty, empty, empty, empty, empty, lectores, empty, empty, empty);
+        break;
+      case "tipos":
+        buffer = await buildPdfDocument(empty, empty, empty, empty, empty, empty, tipos, empty, empty);
+        break;
+      default:
+        buffer = await buildPdfDocument(daily, recent, personas, objetos, puertas, lectores, tipos, decisionReasons, decisionCodes);
+    }
     return fileResponse(buffer, "application/pdf", "pdf")
   } catch (error) {
     console.error("dashboard reports export error", error)
