@@ -62,7 +62,7 @@ export default function RTLSMap({ positions, mapImage }) {
       const x = Math.max(0, Math.min(100, lng));
       const y = Math.max(0, Math.min(100, lat));
       // Mostrar popup para guardar referencia
-      const popup = L.popup()
+      L.popup()
         .setLatLng([y, x])
         .setContent(`Referencia: (${x.toFixed(2)}, ${y.toFixed(2)})<br/><button id='save-ref'>Guardar</button>`)
         .openOn(map);

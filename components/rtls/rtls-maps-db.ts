@@ -1,8 +1,7 @@
 // Simple IndexedDB wrapper for storing map images as blobs
-export function openRTLSMapsDB() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open("rtls-maps-db", 1)
-    request.onupgradeneeded = (event) => {
+    request.onupgradeneeded = () => {
       const db = request.result
       if (!db.objectStoreNames.contains("maps")) {
         db.createObjectStore("maps", { keyPath: "id", autoIncrement: true })

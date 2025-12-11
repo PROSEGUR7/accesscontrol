@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 // Simple in-memory store for demo (replace with DB in production)
-let referencias = [];
+const referencias = [];
 
 export async function POST(request) {
   const { x, y } = await request.json();

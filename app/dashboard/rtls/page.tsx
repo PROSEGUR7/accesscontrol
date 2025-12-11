@@ -2,14 +2,14 @@
 
 
 import dynamic from "next/dynamic"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import RTLSMapManager from "@/components/rtls/rtls-map-manager"
 // Cargar Leaflet dinámicamente para evitar problemas SSR
 const Map = dynamic(() => import("@/components/rtls/rtls-map"), { ssr: false })
 
 export default function RTLSPage() {
   // Estado para posiciones en tiempo real
-  const [positions, setPositions] = useState([])
+  const [positions] = useState([])
   const [mapImage, setMapImage] = useState(null)
 
   useEffect(() => {

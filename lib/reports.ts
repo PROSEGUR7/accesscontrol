@@ -132,8 +132,8 @@ export async function getReportsDataForTenant(tenant: string, filters?: { from?:
                 )::int AS denied
            FROM movimientos m
           WHERE 1=1${whereDate || ` AND m.ts >= now() - interval '${WINDOW_DAYS} days'`}
-          GROUP BY 1
-          ORDER BY 1 DESC
+          GROUP BY CAST(date_trunc('day', m.ts) AS date)
+          ORDER BY CAST(date_trunc('day', m.ts) AS date) DESC
           LIMIT ${WINDOW_DAYS}
        )
        SELECT to_char(day, 'YYYY-MM-DD') AS day,
