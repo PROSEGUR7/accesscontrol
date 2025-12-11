@@ -1,3 +1,6 @@
+
+"use client"
+
 import { FileSpreadsheet, FileText } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
