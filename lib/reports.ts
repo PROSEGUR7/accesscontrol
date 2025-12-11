@@ -241,30 +241,7 @@ export async function getReportsDataForTenant(tenant: string, filters?: { from?:
               obj.tipo AS objeto_tipo,
               obj.estado AS objeto_estado,
               COUNT(*)::int AS total,
-              COUNT(*) FILTER (WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = true)::int AS authorized,
-              COUNT(*) FILTER (
-                WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = false
-                   OR lower(coalesce(m.tipo, '')) LIKE '%deneg%'
-              )::int AS denied,
-              GREATEST(
-                COUNT(*)
-                  - COUNT(*) FILTER (WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = true)
-                  - COUNT(*) FILTER (
-                      WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = false
-                         OR lower(coalesce(m.tipo, '')) LIKE '%deneg%'
-                    ),
-                0
-              )::int AS pending,
-              MAX(m.ts) AS last_seen
-         FROM movimientos m
-         LEFT JOIN objetos obj ON obj.id = m.objeto_id
-        WHERE 1=1${whereDate || ` AND m.ts >= now() - interval '${WINDOW_DAYS} days'`}
-        GROUP BY obj.id, objeto, obj.tipo, obj.estado
-        ORDER BY total DESC
-        LIMIT ${SUMMARY_LIMIT}`,
-      params,
-      tenant,
-    ),
+    // (fin de queries principales)
 
               COUNT(*) FILTER (WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = true)::int AS authorized,
               COUNT(*) FILTER (
