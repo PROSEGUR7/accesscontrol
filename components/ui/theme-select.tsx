@@ -25,8 +25,6 @@ export function ThemeSelect() {
       setBaseColor(stored);
     }
   }, []);
-
-  const { theme } = useTheme();
   const handleChange = (value: string) => {
     setBaseColor(value);
     window.localStorage.setItem("baseColor", value);
