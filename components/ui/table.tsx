@@ -5,10 +5,12 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
+  // Sticky header fix: wrapper div gets relative, table gets full width, header gets sticky with left offset
   return (
     <div
       data-slot="table-container"
       className="relative w-full overflow-x-auto"
+      style={{ position: 'relative' }}
     >
       <table
         data-slot="table"
@@ -23,8 +25,12 @@ function TableHeader({ className, ...props }: React.ComponentProps<'thead'>) {
   return (
       <thead
         data-slot="table-header"
-        className={cn('[&_tr]:border-b bg-background sticky top-0 z-50', className)}
-        style={{ position: 'sticky', top: 0, zIndex: 50 }}
+        className={cn('[&_tr]:border-b bg-background sticky top-0 z-30', className)}
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 30,
+        }}
       {...props}
     />
   )

@@ -106,7 +106,11 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
             </Breadcrumb>
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-3 pt-0 sm:p-4 md:ml-[16rem]">{children}</div>
+        <div
+          className="flex flex-1 flex-col gap-4 p-3 pt-0 sm:p-4 transition-all md:ml-0 group-data-[state=expanded]/sidebar-wrapper:md:ml-[16rem] group-data-[collapsible=icon][data-state=collapsed]/sidebar-wrapper:md:ml-[3rem]"
+        >
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )
