@@ -7,22 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { getSessionFromCookies } from "@/lib/auth"
-import { getReportsDataForTenant } from "@/lib/reports"
-
-export const revalidate = 0
-
-async function getReportsData() {
-  const session = await getSessionFromCookies()
-
-  if (!session?.tenant) {
-    throw new Error("No se pudo determinar el tenant para los reportes")
-  }
-
-  const tenant = session.tenant
-
-  return getReportsDataForTenant(tenant)
-}
 
 function formatDate(value: string | Date) {
   const date = value instanceof Date ? value : new Date(value)

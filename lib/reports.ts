@@ -265,7 +265,7 @@ export async function getReportsDataForTenant(tenant: string, filters?: { from?:
       params,
       tenant,
     ),
-    // Aquí puedes agregar más queries si lo necesitas.
+
               COUNT(*) FILTER (WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = true)::int AS authorized,
               COUNT(*) FILTER (
                 WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = false
