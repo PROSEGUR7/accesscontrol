@@ -14,7 +14,7 @@ const themes = [
 ]
 
 export function ThemeSelect() {
-  const { resolvedTheme, setTheme } = useTheme();
+  const { theme } = useTheme();
   const [baseColor, setBaseColor] = React.useState<string>(
     typeof window !== "undefined" ? (window.localStorage.getItem("baseColor") || "neutral") : "neutral"
   );
