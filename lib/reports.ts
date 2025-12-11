@@ -265,7 +265,7 @@ export async function getReportsDataForTenant(tenant: string, filters?: { from?:
       params,
       tenant,
     ),
-    // ...el resto igual, solo cambia el WHERE agregando whereDate
+    // Puedes agregar aquí el resto de queries (puertas, lectores, tipos, reasons, codes) siguiendo el mismo patrón de whereDate si es necesario.
               COUNT(*) FILTER (WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = true)::int AS authorized,
               COUNT(*) FILTER (
                 WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = false

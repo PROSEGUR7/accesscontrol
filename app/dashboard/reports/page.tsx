@@ -51,7 +51,9 @@ function statusBadge(value: boolean | null) {
   return <Badge variant="outline">Sin decisión</Badge>
 }
 
-import { useState } from "react"
+
+"use client"
+import { useState, useEffect } from "react"
 
 export default function ReportsPageWrapper() {
   const [from, setFrom] = useState("")
