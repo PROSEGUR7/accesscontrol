@@ -1,19 +1,21 @@
+
 // Simple IndexedDB wrapper for storing map images as blobs
+export function openRTLSMapsDB(): Promise<IDBDatabase> {
   return new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open("rtls-maps-db", 1)
     request.onupgradeneeded = () => {
-      const db = request.result
+      const db = request.result as IDBDatabase
       if (!db.objectStoreNames.contains("maps")) {
         db.createObjectStore("maps", { keyPath: "id", autoIncrement: true })
       }
     }
-    request.onsuccess = () => resolve(request.result)
+    request.onsuccess = () => resolve(request.result as IDBDatabase)
     request.onerror = () => reject(request.error)
   })
 }
 
 export function addMapToDB({ name, file }: { name: string; file: File }): Promise<number> {
-  return openRTLSMapsDB().then((db) => {
+  return openRTLSMapsDB().then((db: IDBDatabase) => {
     return new Promise<number>((resolve, reject) => {
       const tx = db.transaction("maps", "readwrite")
       const store = tx.objectStore("maps")
@@ -23,8 +25,8 @@ export function addMapToDB({ name, file }: { name: string; file: File }): Promis
     })
   })
 }
-export function getAllMapsFromDB() {
-  return openRTLSMapsDB().then((db) => {
+export function getAllMapsFromDB(): Promise<any[]> {
+  return openRTLSMapsDB().then((db: IDBDatabase) => {
     return new Promise<any[]>((resolve, reject) => {
       const tx = db.transaction("maps", "readonly")
       const store = tx.objectStore("maps")
@@ -36,7 +38,7 @@ export function getAllMapsFromDB() {
 }
 
 export function deleteMapFromDB(id: number): Promise<void> {
-  return openRTLSMapsDB().then((db) => {
+  return openRTLSMapsDB().then((db: IDBDatabase) => {
     return new Promise<void>((resolve, reject) => {
       const tx = db.transaction("maps", "readwrite")
       const store = tx.objectStore("maps")
