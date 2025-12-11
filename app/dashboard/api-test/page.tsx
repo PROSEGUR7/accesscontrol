@@ -246,7 +246,7 @@ export default function ApiTestPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-16 sm:pt-20">
       <div className="flex flex-wrap items-center gap-3">
         <Badge
           variant={connected ? "outline" : "destructive"}

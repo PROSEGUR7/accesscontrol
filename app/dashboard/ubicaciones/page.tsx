@@ -308,7 +308,7 @@ export default function LocationsPage() {
       </div>
 
       <Sheet open={isSheetOpen} onOpenChange={handleSheetOpenChange}>
-        <SheetContent className="sm:max-w-lg">
+        <SheetContent className="sm:max-w-2xl px-6 py-8 flex flex-col justify-between">
           <SheetHeader>
             <SheetTitle>{editingLocation ? "Editar ubicación" : "Registrar ubicación"}</SheetTitle>
           </SheetHeader>
@@ -372,7 +372,7 @@ export default function LocationsPage() {
                 )}
               />
 
-              <SheetFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <SheetFooter className="flex flex-row gap-4 justify-end pt-8">
                 <Button type="button" variant="outline" onClick={closeSheet} disabled={submitting}>
                   Cancelar
                 </Button>

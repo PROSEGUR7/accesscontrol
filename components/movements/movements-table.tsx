@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Spinner } from "@/components/ui/spinner"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -125,10 +126,18 @@ function EntityLine({ icon: Icon, label, value }: { icon: LucideIcon; label: str
 export function MovementsTable({ data, loading, onView, onEdit, onDelete, formatDate }: MovementsTableProps) {
   if (loading) {
     return (
-      <div className="flex min-h-[240px] items-center justify-center">
-        <Spinner className="size-6" />
+      <div className="space-y-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="flex items-center space-x-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-4 w-[250px]" />
+              <Skeleton className="h-4 w-[200px]" />
+            </div>
+          </div>
+        ))}
       </div>
-    )
+    );
   }
 
   if (!data.length) {
