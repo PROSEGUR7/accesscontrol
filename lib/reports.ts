@@ -120,29 +120,26 @@ export async function getReportsDataForTenant(tenant: string, filters?: { from?:
     whereDate += ` AND m.ts <= $${params.length}`
   }
 
-  const [daily, recent, personas, objetos, puertas, lectores, tipos, reasons, codes] = await Promise.all([
+  const [daily, recent, personas, objetos, puertas, lectores, tipos, reasons] = await Promise.all([
     query<DailyReportRow>(
       `WITH daily AS (
-         SELECT CAST(date_trunc('day', m.ts) AS date) AS day,
-                COUNT(*)::int AS total,
-                COUNT(*) FILTER (WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = true)::int AS authorized,
-                COUNT(*) FILTER (
-                  WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = false
-                     OR lower(coalesce(m.tipo, '')) LIKE '%deneg%'
-                )::int AS denied
-           FROM movimientos m
-          WHERE 1=1${whereDate || ` AND m.ts >= now() - interval '${WINDOW_DAYS} days'`}
-          GROUP BY CAST(date_trunc('day', m.ts) AS date)
-          ORDER BY CAST(date_trunc('day', m.ts) AS date) DESC
-          LIMIT ${WINDOW_DAYS}
+         SELECT CAST(date_trunc('day', m.ts) AS date) AS "day",
+           COUNT(*)::int AS "total",
+           COUNT(*) FILTER (WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = true)::int AS "authorized",
+           COUNT(*) FILTER (WHERE (m.extra->'accessControl'->'decision'->>'authorized')::boolean = false)::int AS "denied"
+          FROM movimientos m
+         WHERE 1=1${whereDate || ` AND m.ts >= now() - interval '${WINDOW_DAYS} days'`}
+         GROUP BY CAST(date_trunc('day', m.ts) AS date)
+         ORDER BY CAST(date_trunc('day', m.ts) AS date) DESC
+         LIMIT ${WINDOW_DAYS}
        )
-       SELECT to_char(day, 'YYYY-MM-DD') AS day,
-              total,
-              authorized,
-              denied,
-              GREATEST(total - authorized - denied, 0)::int AS pending
-         FROM daily
-        ORDER BY day DESC`,
+       SELECT to_char("day", 'YYYY-MM-DD') AS "day",
+            "total",
+            "authorized",
+            "denied",
+            GREATEST("total" - "authorized" - "denied", 0)::int AS "pending"
+        FROM daily
+        ORDER BY "day" DESC`,
       params,
       tenant,
     ),
@@ -150,49 +147,49 @@ export async function getReportsDataForTenant(tenant: string, filters?: { from?:
       `SELECT m.id,
               m.ts,
               m.epc,
-              per.id AS persona_id,
-              COALESCE(per.nombre, m.extra->'accessControl'->'decision'->'persona'->>'nombre') AS persona,
-              per.rfid_epc AS persona_epc,
-              per.habilitado AS persona_habilitada,
-              obj.id AS objeto_id,
-              COALESCE(obj.nombre, m.extra->'accessControl'->'decision'->'objeto'->>'nombre') AS objeto,
-              obj.tipo AS objeto_tipo,
-              obj.estado AS objeto_estado,
-              door.id AS puerta_id,
-              COALESCE(door.nombre, m.extra->'accessControl'->'decision'->'puerta'->>'nombre') AS puerta,
-              door.activa AS puerta_activa,
-              lector.id AS lector_id,
-              COALESCE(lector.nombre, m.extra->'accessControl'->'decision'->'lector'->>'nombre') AS lector,
-              lector.ip AS lector_ip,
-              lector.activo AS lector_activo,
-              antena.id AS antena_id,
+              per.id AS "persona_id",
+              COALESCE(per.nombre, m.extra->'accessControl'->'decision'->'persona'->>'nombre') AS "persona",
+              per.rfid_epc AS "persona_epc",
+              per.habilitado AS "persona_habilitada",
+              obj.id AS "objeto_id",
+              COALESCE(obj.nombre, m.extra->'accessControl'->'decision'->'objeto'->>'nombre') AS "objeto",
+              obj.tipo AS "objeto_tipo",
+              obj.estado AS "objeto_estado",
+              door.id AS "puerta_id",
+              COALESCE(door.nombre, m.extra->'accessControl'->'decision'->'puerta'->>'nombre') AS "puerta",
+              door.activa AS "puerta_activa",
+              lector.id AS "lector_id",
+              COALESCE(lector.nombre, m.extra->'accessControl'->'decision'->'lector'->>'nombre') AS "lector",
+              lector.ip AS "lector_ip",
+              lector.activo AS "lector_activo",
+              antena.id AS "antena_id",
               COALESCE(
                 m.extra->'accessControl'->'decision'->'antena'->>'nombre',
                 CASE
                   WHEN antena.id IS NOT NULL THEN CONCAT('Antena ', COALESCE(antena.indice::text, antena.id::text))
                   ELSE NULL
                 END
-              ) AS antena,
-              m.tipo,
-              m.direccion,
-              m.motivo,
-              m.rssi,
-              (m.extra->'accessControl'->'decision'->>'authorized')::boolean AS authorized,
-              m.extra->'accessControl'->'decision'->>'reason' AS decision_reason,
+              ) AS "antena",
+              m.tipo AS "tipo",
+              m.direccion AS "direccion",
+              m.motivo AS "motivo",
+              m.rssi AS "rssi",
+              (m.extra->'accessControl'->'decision'->>'authorized')::boolean AS "authorized",
+              m.extra->'accessControl'->'decision'->>'reason' AS "decision_reason",
               COALESCE(
                 (
                   SELECT array_agg(DISTINCT elem)
                   FROM jsonb_array_elements_text(m.extra->'accessControl'->'decision'->'codes') AS elem
                 ),
                 ARRAY[]::text[]
-              ) AS decision_codes,
+              ) AS "decision_codes",
               COALESCE(
                 (
                   SELECT array_agg(DISTINCT note)
                   FROM jsonb_array_elements_text(m.extra->'accessControl'->'decision'->'notes') AS note
                 ),
                 ARRAY[]::text[]
-              ) AS decision_notes
+              ) AS "decision_notes"
          FROM movimientos m
          LEFT JOIN personas per ON per.id = m.persona_id
          LEFT JOIN objetos obj ON obj.id = m.objeto_id
@@ -356,6 +353,5 @@ export async function getReportsDataForTenant(tenant: string, filters?: { from?:
     lectores,
     tipos,
     decisionReasons: reasons,
-    decisionCodes: codes,
   }
 }
